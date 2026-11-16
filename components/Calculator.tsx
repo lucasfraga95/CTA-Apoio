@@ -276,7 +276,11 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
             )}
             {resultado.sobraMg > 0 && (
               <p>
-                Sobra de {num(resultado.sobraMg)} {un} no último frasco (descartar).
+                {resultado.mlUltimoFrasco !== undefined
+                  ? resultado.frascosInteiros > 0
+                    ? `${resultado.frascosInteiros} ${resultado.frascosInteiros === 1 ? "frasco completo" : "frascos completos"} e ${num(resultado.mlUltimoFrasco)} mL do último (descartar ${num(resultado.sobraMl ?? 0)} mL).`
+                    : `Usar ${num(resultado.mlUltimoFrasco)} mL do frasco (descartar ${num(resultado.sobraMl ?? 0)} mL).`
+                  : `Sobra de ${num(resultado.sobraMg)} ${un} no último frasco (descartar).`}
               </p>
             )}
           </>

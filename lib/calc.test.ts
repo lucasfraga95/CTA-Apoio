@@ -36,6 +36,8 @@ describe("tocilizumabe (bolsa 50 mL < 30 kg, 100 mL >= 30 kg)", () => {
     expect(r.doseMg).toBe(200);
     expect(r.frascosNecessarios).toBe(3);
     expect(r.sobraMg).toBe(40);
+    expect(r.mlUltimoFrasco).toBe(2); // 40 mg de um frasco de 80 mg/4 mL
+    expect(r.sobraMl).toBe(2);
     expect(r.volumeAspirarMl).toBe(10);
     expect(r.bolsaMl).toBe(50);
     expect(r.volumeFinalMl).toBe(50);
@@ -83,6 +85,8 @@ describe("infliximabe (bolsa fixa de 250 mL)", () => {
     expect(r.frascosNecessarios).toBe(4);
     expect(r.frascosInteiros).toBe(3);
     expect(r.sobraMg).toBe(50);
+    expect(r.mlUltimoFrasco).toBe(5);
+    expect(r.sobraMl).toBe(5);
     expect(r.volumeAspirarMl).toBe(35);
     expect(r.bolsaMl).toBe(250);
     expect(r.volumeFinalMl).toBe(250);
@@ -115,6 +119,22 @@ describe("infliximabe (bolsa fixa de 250 mL)", () => {
         "(bolsa de 250 mL, retirando antes 40 mL do soro). Concentração final: 1,6 mg/mL.",
     );
     expect(linhas).toHaveLength(3); // cabeçalho + parágrafo + aviso de "não revisado"
+  });
+
+  it("frasco parcial aparece em mL: 3 frascos completos e 5 mL do último", () => {
+    const n = nota(infli, { modo: "mgkg", pesoKg: 70, doseMgPorKg: 5 });
+    expect(n).toContain("Total: 4 frascos (3 frascos completos e 5 mL do último).");
+    expect(n).not.toMatch(/descartar \d+ mg|usar \d+ mg/);
+  });
+
+  it("singular: 1 frasco completo e X mL do último", () => {
+    const n = nota(infli, { modo: "mg", doseMg: 125 });
+    expect(n).toContain("Total: 2 frascos (1 frasco completo e 2,5 mL do último).");
+  });
+
+  it("só um frasco parcial: usar X mL do frasco (tocilizumabe 60 mg => 3 mL)", () => {
+    const n = nota(toci, { modo: "mg", doseMg: 60, pesoKg: 70 });
+    expect(n).toContain("Total: 1 frasco (usar 3 mL do frasco).");
   });
 
   it("depois de revisado, a nota tem só o cabeçalho e o parágrafo", () => {
@@ -214,7 +234,10 @@ describe("modelos de diluição dos demais medicamentos do guia (ainda não carr
     expect(r.ok).toBe(true);
     expect(r.frascosNecessarios).toBe(3);
     expect(r.volumeAspirarMl).toBeUndefined();
+    expect(r.mlUltimoFrasco).toBeUndefined();
     expect(nota(med, e)).toContain("recomendação do fabricante");
+    // sem mL por frasco, cai para a quantidade
+    expect(nota(med, { modo: "mg", doseMg: 7 })).toContain("o último é parcial: usar 2 g e descartar 3 g");
   });
 
   it("laronidase: bolsa de 100 mL até 20 kg e 250 mL acima", () => {

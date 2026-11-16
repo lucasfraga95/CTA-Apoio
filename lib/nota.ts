@@ -59,11 +59,21 @@ export function gerarNota(
   const frases: string[] = [];
 
   const totalFrascos = `${r.frascosNecessarios} ${plural(r.frascosNecessarios, "frasco", "frascos")}`;
-  frases.push(
-    r.sobraMg > 0
-      ? `Total: ${totalFrascos} (o último é parcial: usar ${num(mgPorFrasco - r.sobraMg)} ${un} e descartar ${num(r.sobraMg)} ${un}).`
-      : `Total: ${totalFrascos} (frascos inteiros, sem sobra).`,
-  );
+  if (r.sobraMg <= 0) {
+    frases.push(`Total: ${totalFrascos} (frascos inteiros, sem sobra).`);
+  } else if (r.mlUltimoFrasco !== undefined) {
+    // Em mL, como a enfermagem trabalha.
+    frases.push(
+      r.frascosInteiros > 0
+        ? `Total: ${totalFrascos} (${r.frascosInteiros} ${plural(r.frascosInteiros, "frasco completo", "frascos completos")} e ${num(r.mlUltimoFrasco)} mL do último).`
+        : `Total: ${totalFrascos} (usar ${num(r.mlUltimoFrasco)} mL do frasco).`,
+    );
+  } else {
+    // Sem mL por frasco no cadastro: cai para a quantidade.
+    frases.push(
+      `Total: ${totalFrascos} (o último é parcial: usar ${num(mgPorFrasco - r.sobraMg)} ${un} e descartar ${num(r.sobraMg)} ${un}).`,
+    );
+  }
 
   if (med.reconstituicao) {
     const rec = med.reconstituicao;

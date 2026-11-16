@@ -92,6 +92,12 @@ export function calcular(
   const volumeAspirarMl =
     mlPorFrasco !== undefined ? (dose * mlPorFrasco) / m : undefined;
 
+  // Frasco parcial em mL (é como a enfermagem trabalha).
+  const restoMg = dose - frascosInteiros * m;
+  const temParcial = mlPorFrasco !== undefined && restoMg > EPS;
+  const mlUltimoFrasco = temParcial ? (restoMg / m) * mlPorFrasco : undefined;
+  const sobraMl = temParcial ? mlPorFrasco - (mlUltimoFrasco as number) : undefined;
+
   const alertas: string[] = [];
   const d = med.diluicao;
   const pesoInformado = positivo(entrada.pesoKg) ? entrada.pesoKg : undefined;
@@ -183,6 +189,8 @@ export function calcular(
     frascosNecessarios,
     frascosInteiros,
     sobraMg: arred(sobraMg, 2),
+    mlUltimoFrasco: mlUltimoFrasco !== undefined ? arred(mlUltimoFrasco, 2) : undefined,
+    sobraMl: sobraMl !== undefined ? arred(sobraMl, 2) : undefined,
     volumeAspirarMl: volumeAspirarMl !== undefined ? arred(volumeAspirarMl, 2) : undefined,
     volumeReconstituicaoTotalMl: med.reconstituicao
       ? arred(frascosNecessarios * med.reconstituicao.volumeMl, 2)

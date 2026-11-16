@@ -125,6 +125,10 @@ export interface ResultadoCalculo {
   frascosNecessarios: number; // frascos (inclusive parciais) abertos
   frascosInteiros: number; // frascos completos usados
   sobraMg: number; // desperdício do último frasco
+  /** Volume a usar do último frasco (parcial), em mL. Indefinido se não há frasco parcial ou mL/frasco. */
+  mlUltimoFrasco?: number;
+  /** Volume que sobra (descarte) do último frasco, em mL. */
+  sobraMl?: number;
   /** Indefinido quando o cadastro não informa mL por frasco. */
   volumeAspirarMl?: number;
   volumeReconstituicaoTotalMl?: number;
