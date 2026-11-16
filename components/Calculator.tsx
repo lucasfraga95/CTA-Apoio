@@ -243,7 +243,15 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
                 </ul>
               </div>
             )}
-            {resultado.arredondada && (
+            {resultado.limitadaAoMaximo && (
+              <div className="aviso vermelho" role="alert">
+                <strong>Dose limitada ao máximo.</strong> A dose calculada de{" "}
+                {num(resultado.doseCalculadaMg)} {un} passa do máximo por infusão; o site usou{" "}
+                {num(resultado.doseMg)} {un}
+                {resultado.frascosNecessarios > 0 ? ` (${resultado.frascosNecessarios} frascos)` : ""}.
+              </div>
+            )}
+            {resultado.arredondada && !resultado.limitadaAoMaximo && (
               <div className="aviso azul">
                 Dose calculada de {num(resultado.doseCalculadaMg)} {un} arredondada para{" "}
                 {num(resultado.doseMg)} {un} conforme a regra do medicamento.

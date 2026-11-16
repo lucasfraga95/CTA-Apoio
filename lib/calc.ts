@@ -82,8 +82,23 @@ export function calcular(
       return falha("Modo de cálculo inválido.");
   }
 
-  const dose = permiteArredondar ? aplicarArredondamento(med, doseCalc) : doseCalc;
+  let dose = permiteArredondar ? aplicarArredondamento(med, doseCalc) : doseCalc;
   const arredondada = Math.abs(dose - doseCalc) > EPS;
+
+  // Dose máxima por infusão: teto rígido. No cálculo por kg a dose é limitada ao teto;
+  // quando a dose foi digitada (mg ou frascos), recusa em vez de mudar o que foi pedido.
+  let limitadaAoMaximo = false;
+  const tetoMg = med.doseMaxMg;
+  if (positivo(tetoMg) && dose > tetoMg + EPS) {
+    if (entrada.modo === "mgkg") {
+      dose = tetoMg;
+      limitadaAoMaximo = true;
+    } else {
+      return falha(
+        `A dose de ${num(dose)} ${un} passa do máximo de ${num(tetoMg)} ${un} por infusão (${num(tetoMg / m, 2)} frascos de ${num(m)} ${un}). Reduza a dose.`,
+      );
+    }
+  }
 
   const frascosNecessarios = Math.ceil(dose / m - EPS);
   const frascosInteiros = Math.floor(dose / m + EPS);
@@ -162,11 +177,6 @@ export function calcular(
       );
     }
   }
-  if (positivo(med.doseMaxMg) && dose > med.doseMaxMg + EPS) {
-    alertas.push(
-      `Dose de ${num(dose)} ${un} acima do teto por infusão cadastrado (${num(med.doseMaxMg)} ${un}).`,
-    );
-  }
   const { concentracaoFinalMinMgMl: cMin, concentracaoFinalMaxMgMl: cMax } = d;
   if (concentracaoFinalMgMl !== undefined) {
     if (positivo(cMin) && concentracaoFinalMgMl < cMin - EPS) {
@@ -186,6 +196,7 @@ export function calcular(
     doseMg: arred(dose, 2),
     doseCalculadaMg: arred(doseCalc, 2),
     arredondada,
+    limitadaAoMaximo: limitadaAoMaximo || undefined,
     frascosNecessarios,
     frascosInteiros,
     sobraMg: arred(sobraMg, 2),

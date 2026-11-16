@@ -202,12 +202,53 @@ describe("regras gerais do cálculo", () => {
     expect(calcular(med, { modo: "mgkg", pesoKg: 60, doseMgPorKg: 8 }).ok).toBe(false);
   });
 
-  it("alerta quando passa dos limites cadastrados", () => {
-    const med: Medicamento = { ...base, doseMaxMgKg: 8, doseMaxMg: 800 };
-    const r = calcular(med, { modo: "mgkg", pesoKg: 120, doseMgPorKg: 8 });
-    expect(r.alertas.join(" ")).toMatch(/teto/);
-    const r2 = calcular(med, { modo: "mgkg", pesoKg: 60, doseMgPorKg: 10 });
-    expect(r2.alertas.join(" ")).toMatch(/acima do máximo/);
+  it("alerta quando a dose fica fora dos limites mg/kg cadastrados", () => {
+    const med: Medicamento = { ...base, doseMaxMgKg: 8, doseMaxMg: undefined };
+    const r = calcular(med, { modo: "mgkg", pesoKg: 60, doseMgPorKg: 10 });
+    expect(r.alertas.join(" ")).toMatch(/acima do máximo/);
+  });
+});
+
+describe("tocilizumabe: dose máxima de 800 mg por infusão (teto rígido)", () => {
+  it("o cadastro traz 800 mg como máximo e a dose usual de 8 mg/kg em primeiro", () => {
+    expect(toci.doseMaxMg).toBe(800);
+    expect(toci.dosesUsuais[0].mgPorKg).toBe(8);
+    expect(toci.dosesUsuais.map((d) => d.mgPorKg)).toEqual([8, 4, 10, 12]);
+  });
+
+  it("100 kg x 8 mg/kg = 800 mg: no limite, sem aviso de limitação (10 frascos)", () => {
+    const r = calcular(toci, { modo: "mgkg", pesoKg: 100, doseMgPorKg: 8 });
+    expect(r.doseMg).toBe(800);
+    expect(r.limitadaAoMaximo).toBeUndefined();
+    expect(r.frascosNecessarios).toBe(10);
+    expect(r.volumeAspirarMl).toBe(40);
+  });
+
+  it("110 kg x 8 mg/kg = 880 mg é limitado a 800 mg (10 frascos), sem passar do máximo", () => {
+    const r = calcular(toci, { modo: "mgkg", pesoKg: 110, doseMgPorKg: 8 });
+    expect(r.doseCalculadaMg).toBe(880);
+    expect(r.doseMg).toBe(800);
+    expect(r.limitadaAoMaximo).toBe(true);
+    expect(r.frascosNecessarios).toBe(10);
+    expect(r.volumeAspirarMl).toBe(40);
+    const n = nota(toci, { modo: "mgkg", pesoKg: 110, doseMgPorKg: 8 });
+    expect(n).toContain("TOCILIZUMABE 800 mg IV (8 mg/kg x 110 kg = 880 mg; limitada ao máximo de 800 mg por infusão)");
+  });
+
+  it("dose em mg ou em frascos acima do máximo é recusada (não muda o que foi pedido)", () => {
+    const r1 = calcular(toci, { modo: "mg", doseMg: 900, pesoKg: 90 });
+    expect(r1.ok).toBe(false);
+    expect(r1.erro).toMatch(/máximo de 800 mg/);
+    expect(calcular(toci, { modo: "frascos", frascos: 11, pesoKg: 90 }).ok).toBe(false);
+    expect(calcular(toci, { modo: "frascos", frascos: 10, pesoKg: 90 }).ok).toBe(true);
+    expect(calcular(toci, { modo: "mg", doseMg: 800, pesoKg: 90 }).ok).toBe(true);
+  });
+
+  it("dose reduzida de 4 mg/kg e doses pediátricas calculam normalmente", () => {
+    expect(calcular(toci, { modo: "mgkg", pesoKg: 70, doseMgPorKg: 4 }).doseMg).toBe(280);
+    const ped = calcular(toci, { modo: "mgkg", pesoKg: 20, doseMgPorKg: 12 });
+    expect(ped.doseMg).toBe(240);
+    expect(ped.bolsaMl).toBe(50);
   });
 });
 

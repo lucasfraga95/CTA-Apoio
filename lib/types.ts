@@ -75,7 +75,8 @@ export interface Medicamento {
   dosesUsuais: DoseUsual[];
   doseMinMgKg?: number;
   doseMaxMgKg?: number;
-  /** Teto absoluto por infusão, na unidade do medicamento. */
+  /** Dose máxima por infusão, na unidade do medicamento. Teto rígido: no cálculo por kg a dose é
+   *  limitada a esse valor; em dose em mg ou frascos, passar do teto é recusado. */
   doseMaxMg?: number;
 
   /** Tempo fixo de infusão em minutos (quando for um número simples). */
@@ -122,6 +123,8 @@ export interface ResultadoCalculo {
   /** Dose bruta antes do arredondamento. */
   doseCalculadaMg: number;
   arredondada: boolean;
+  /** true quando a dose calculada passou do máximo por infusão e foi limitada a ele. */
+  limitadaAoMaximo?: boolean;
   frascosNecessarios: number; // frascos (inclusive parciais) abertos
   frascosInteiros: number; // frascos completos usados
   sobraMg: number; // desperdício do último frasco

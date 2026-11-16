@@ -48,7 +48,7 @@ export const MEDICAMENTOS_GUIA: Medicamento[] = [
   {
     id: "tocilizumabe",
     nome: "Tocilizumabe",
-    descricao: "Solução injetável 20 mg/mL, frasco de 4 mL.",
+    descricao: "Via intravenosa. Solução injetável 20 mg/mL, frasco de 4 mL.",
     apresentacao: { mgPorFrasco: 80, mlPorFrasco: 4 },
     diluicao: {
       diluente: "SF 0,9%",
@@ -57,13 +57,21 @@ export const MEDICAMENTOS_GUIA: Medicamento[] = [
       volumeBolsaPorPeso: [{ abaixoDeKg: 30, volumeMl: 50 }],
       instrucaoExtra: "Inverter suavemente a bolsa para misturar, sem agitar.",
     },
-    dosesUsuais: [],
-    tempoInfusaoMin: 60,
-    estabilidade: "Após diluição: 24 h sob refrigeração.",
+    dosesUsuais: [
+      { rotulo: "Dose usual (AR; AIJP e AIJS ≥ 30 kg)", mgPorKg: 8 },
+      { rotulo: "AR com alteração laboratorial (dose reduzida)", mgPorKg: 4 },
+      { rotulo: "AIJP < 30 kg", mgPorKg: 10 },
+      { rotulo: "AIJS < 30 kg", mgPorKg: 12 },
+    ],
+    doseMaxMg: 800,
+    infusaoTexto:
+      "Em 1 hora: iniciar lentamente e, sem anormalidades, aumentar a velocidade para completar em cerca de 1 h.",
+    estabilidade:
+      "Após diluição: usar imediatamente; se necessário, até 24 h entre 2 e 8 °C. A solução é estável por até 24 h em temperatura ambiente (até 30 °C).",
     observacoes:
-      "Compatível com bolsas de PP, PE, PVC e vidro. Só infundir soluções translúcidas a opalescentes, incolores a amarelo pálido, sem partículas.",
+      "Dose máxima de 800 mg por infusão (bula: acima de 100 kg, doses superiores a 800 mg não são recomendadas). Contém sacarose (50 mg/mL): em diabéticos, considerar controle da glicemia após a infusão. Só infundir soluções translúcidas a opalescentes, incolores a amarelo pálido, sem partículas. Compatível com bolsas de PP, PE, PVC e vidro.",
     pendencias:
-      "A diluição (50 mL abaixo de 30 kg; 100 mL a partir de 30 kg) estava em vermelho no guia e descreve 'volume final'; o cadastro usa 'completar até o volume da bolsa'. Confirmar.",
+      "Diluição conferida com a bula (Actemra): 100 mL a partir de 30 kg e 50 mL abaixo de 30 kg, retirando da bolsa o volume de tocilizumabe e descartando. Dose máxima cadastrada: 800 mg, que equivale a 10 frascos de 80 mg (e não 8): confirmar. Doses AIJP/AIJS (10 e 12 mg/kg abaixo de 30 kg) vêm da bula; remover se não forem usadas.",
     arredondamento: SEM_ARRED,
     revisado: false,
     atualizadoEm: DATA,

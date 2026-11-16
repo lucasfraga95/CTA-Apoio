@@ -636,7 +636,7 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
               <input id="f-dmax" inputMode="decimal" value={form.doseMaxKg} onChange={(e) => set("doseMaxKg", e.target.value)} />
             </div>
             <div className="campo">
-              <label htmlFor="f-dabs">Teto por infusão (mg)</label>
+              <label htmlFor="f-dabs">Dose máxima por infusão ({form.unidade}) — teto rígido</label>
               <input id="f-dabs" inputMode="decimal" value={form.doseMaxMg} onChange={(e) => set("doseMaxMg", e.target.value)} />
             </div>
           </div>

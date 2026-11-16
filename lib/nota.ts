@@ -12,6 +12,9 @@ function descricaoDose(
   switch (e.modo) {
     case "mgkg": {
       const base = `${num(e.doseMgPorKg ?? 0)} ${un}/kg x ${num(e.pesoKg ?? 0)} kg = ${num(r.doseCalculadaMg)} ${un}`;
+      if (r.limitadaAoMaximo) {
+        return `${base}; limitada ao máximo de ${num(r.doseMg)} ${un} por infusão`;
+      }
       return r.arredondada
         ? `${base}; arredondada para ${num(r.doseMg)} ${un} (${r.frascosInteiros} ${plural(r.frascosInteiros, "frasco inteiro", "frascos inteiros")})`
         : base;
