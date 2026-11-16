@@ -2,10 +2,13 @@ import { arred, num } from "./format";
 import type {
   EntradaCalculo,
   Medicamento,
+  RegraBolsaPorPeso,
   ResultadoCalculo,
 } from "./types";
 
 const EPS = 1e-9;
+
+export const unidadeDe = (med: Medicamento): string => med.unidade ?? "mg";
 
 function falha(erro: string): ResultadoCalculo {
   return {
@@ -17,10 +20,6 @@ function falha(erro: string): ResultadoCalculo {
     frascosNecessarios: 0,
     frascosInteiros: 0,
     sobraMg: 0,
-    volumeAspirarMl: 0,
-    volumeDiluenteMl: 0,
-    volumeFinalMl: 0,
-    concentracaoFinalMgMl: 0,
     alertas: [],
   };
 }
@@ -43,12 +42,19 @@ function aplicarArredondamento(med: Medicamento, dose: number): number {
   return difPercent <= tol + EPS ? maisProximo : dose;
 }
 
+function regraVale(regra: RegraBolsaPorPeso, peso: number): boolean {
+  if (positivo(regra.abaixoDeKg) && !(peso < regra.abaixoDeKg)) return false;
+  if (positivo(regra.ateKg) && !(peso <= regra.ateKg)) return false;
+  return true;
+}
+
 export function calcular(
   med: Medicamento,
   entrada: EntradaCalculo,
 ): ResultadoCalculo {
+  const un = unidadeDe(med);
   const { mgPorFrasco: m, mlPorFrasco } = med.apresentacao;
-  if (!positivo(m) || !positivo(mlPorFrasco)) {
+  if (!positivo(m) || (mlPorFrasco !== undefined && !positivo(mlPorFrasco))) {
     return falha("Apresentação do medicamento inválida. Avise o administrador.");
   }
 
@@ -58,7 +64,7 @@ export function calcular(
   switch (entrada.modo) {
     case "mgkg":
       if (!positivo(entrada.pesoKg)) return falha("Informe o peso do paciente.");
-      if (!positivo(entrada.doseMgPorKg)) return falha("Informe a dose em mg/kg.");
+      if (!positivo(entrada.doseMgPorKg)) return falha(`Informe a dose em ${un}/kg.`);
       doseCalc = entrada.pesoKg * entrada.doseMgPorKg;
       break;
     case "frascos":
@@ -69,7 +75,7 @@ export function calcular(
       permiteArredondar = false;
       break;
     case "mg":
-      if (!positivo(entrada.doseMg)) return falha("Informe a dose em mg.");
+      if (!positivo(entrada.doseMg)) return falha(`Informe a dose em ${un}.`);
       doseCalc = entrada.doseMg;
       break;
     default:
@@ -83,59 +89,90 @@ export function calcular(
   const frascosInteiros = Math.floor(dose / m + EPS);
   const sobraMg = Math.max(0, frascosNecessarios * m - dose);
 
-  const volumeAspirarMl = (dose * mlPorFrasco) / m;
+  const volumeAspirarMl =
+    mlPorFrasco !== undefined ? (dose * mlPorFrasco) / m : undefined;
 
-  const { volumeBolsaMl, modo } = med.diluicao;
-  let volumeDiluenteMl: number;
-  let volumeFinalMl: number;
-  if (modo === "completar") {
-    if (volumeAspirarMl > volumeBolsaMl + EPS) {
+  const alertas: string[] = [];
+  const d = med.diluicao;
+  const pesoInformado = positivo(entrada.pesoKg) ? entrada.pesoKg : undefined;
+
+  // ---- Volume da bolsa (fixo ou por peso) ----
+  let bolsaMl: number | undefined;
+  if (d.volumeBolsaPorPeso && d.volumeBolsaPorPeso.length > 0) {
+    if (pesoInformado === undefined) {
       return falha(
-        `O volume do medicamento (${num(volumeAspirarMl)} mL) é maior que a bolsa de ${num(volumeBolsaMl)} mL. Ajuste o volume da bolsa no cadastro.`,
+        "O volume da bolsa de diluição depende do peso do paciente. Informe o peso para continuar.",
       );
+    } else {
+      const regra = d.volumeBolsaPorPeso.find((r) => regraVale(r, pesoInformado));
+      bolsaMl = regra ? regra.volumeMl : d.volumeBolsaMl;
     }
-    volumeDiluenteMl = volumeBolsaMl - volumeAspirarMl;
-    volumeFinalMl = volumeBolsaMl;
   } else {
-    volumeDiluenteMl = volumeBolsaMl;
-    volumeFinalMl = volumeBolsaMl + volumeAspirarMl;
+    bolsaMl = d.volumeBolsaMl;
   }
 
-  const concentracaoFinalMgMl = dose / volumeFinalMl;
-  const mgPorKgEquivalente = positivo(entrada.pesoKg) ? dose / entrada.pesoKg : undefined;
+  let volumeDiluenteMl: number | undefined;
+  let volumeFinalMl: number | undefined;
+  let volumeFinalFaixaMl: { min?: number; max?: number } | undefined;
+
+  if (positivo(bolsaMl)) {
+    const v = volumeAspirarMl ?? 0;
+    if (d.modo === "completar") {
+      if (v > bolsaMl + EPS) {
+        return falha(
+          `O volume do medicamento (${num(v)} mL) é maior que a bolsa de ${num(bolsaMl)} mL. Ajuste o volume da bolsa no cadastro.`,
+        );
+      }
+      volumeDiluenteMl = bolsaMl - v;
+      volumeFinalMl = bolsaMl;
+    } else {
+      volumeDiluenteMl = bolsaMl;
+      volumeFinalMl = bolsaMl + v;
+    }
+  } else if (d.faixaConcentracao) {
+    const { min, max } = d.faixaConcentracao;
+    volumeFinalFaixaMl = { min: dose / max, max: dose / min };
+  } else if (d.faixaVolumeFinalMl) {
+    volumeFinalFaixaMl = d.faixaVolumeFinalMl;
+  }
+
+  const concentracaoFinalMgMl =
+    volumeFinalMl !== undefined && volumeAspirarMl !== undefined ? dose / volumeFinalMl : undefined;
+  const mgPorKgEquivalente = pesoInformado !== undefined ? dose / pesoInformado : undefined;
 
   // ---- Alertas de segurança ----
-  const alertas: string[] = [];
-  if (positivo(entrada.pesoKg) && (entrada.pesoKg < 3 || entrada.pesoKg > 250)) {
-    alertas.push(`Peso incomum (${num(entrada.pesoKg)} kg). Confira se está em kg.`);
+  if (pesoInformado !== undefined && (pesoInformado < 3 || pesoInformado > 250)) {
+    alertas.push(`Peso incomum (${num(pesoInformado)} kg). Confira se está em kg.`);
   }
   if (mgPorKgEquivalente !== undefined) {
     if (positivo(med.doseMaxMgKg) && mgPorKgEquivalente > med.doseMaxMgKg + EPS) {
       alertas.push(
-        `Dose de ${num(mgPorKgEquivalente)} mg/kg acima do máximo cadastrado (${num(med.doseMaxMgKg)} mg/kg).`,
+        `Dose de ${num(mgPorKgEquivalente)} ${un}/kg acima do máximo cadastrado (${num(med.doseMaxMgKg)} ${un}/kg).`,
       );
     }
     if (positivo(med.doseMinMgKg) && mgPorKgEquivalente < med.doseMinMgKg - EPS) {
       alertas.push(
-        `Dose de ${num(mgPorKgEquivalente)} mg/kg abaixo do mínimo cadastrado (${num(med.doseMinMgKg)} mg/kg).`,
+        `Dose de ${num(mgPorKgEquivalente)} ${un}/kg abaixo do mínimo cadastrado (${num(med.doseMinMgKg)} ${un}/kg).`,
       );
     }
   }
   if (positivo(med.doseMaxMg) && dose > med.doseMaxMg + EPS) {
     alertas.push(
-      `Dose de ${num(dose)} mg acima do teto por infusão cadastrado (${num(med.doseMaxMg)} mg).`,
+      `Dose de ${num(dose)} ${un} acima do teto por infusão cadastrado (${num(med.doseMaxMg)} ${un}).`,
     );
   }
-  const { concentracaoFinalMinMgMl: cMin, concentracaoFinalMaxMgMl: cMax } = med.diluicao;
-  if (positivo(cMin) && concentracaoFinalMgMl < cMin - EPS) {
-    alertas.push(
-      `Concentração final (${num(concentracaoFinalMgMl, 3)} mg/mL) abaixo do mínimo cadastrado (${num(cMin, 3)} mg/mL).`,
-    );
-  }
-  if (positivo(cMax) && concentracaoFinalMgMl > cMax + EPS) {
-    alertas.push(
-      `Concentração final (${num(concentracaoFinalMgMl, 3)} mg/mL) acima do máximo cadastrado (${num(cMax, 3)} mg/mL).`,
-    );
+  const { concentracaoFinalMinMgMl: cMin, concentracaoFinalMaxMgMl: cMax } = d;
+  if (concentracaoFinalMgMl !== undefined) {
+    if (positivo(cMin) && concentracaoFinalMgMl < cMin - EPS) {
+      alertas.push(
+        `Concentração final (${num(concentracaoFinalMgMl, 3)} ${un}/mL) abaixo do mínimo cadastrado (${num(cMin, 3)} ${un}/mL).`,
+      );
+    }
+    if (positivo(cMax) && concentracaoFinalMgMl > cMax + EPS) {
+      alertas.push(
+        `Concentração final (${num(concentracaoFinalMgMl, 3)} ${un}/mL) acima do máximo cadastrado (${num(cMax, 3)} ${un}/mL).`,
+      );
+    }
   }
 
   return {
@@ -146,13 +183,21 @@ export function calcular(
     frascosNecessarios,
     frascosInteiros,
     sobraMg: arred(sobraMg, 2),
-    volumeAspirarMl: arred(volumeAspirarMl, 2),
+    volumeAspirarMl: volumeAspirarMl !== undefined ? arred(volumeAspirarMl, 2) : undefined,
     volumeReconstituicaoTotalMl: med.reconstituicao
       ? arred(frascosNecessarios * med.reconstituicao.volumeMl, 2)
       : undefined,
-    volumeDiluenteMl: arred(volumeDiluenteMl, 2),
-    volumeFinalMl: arred(volumeFinalMl, 2),
-    concentracaoFinalMgMl: arred(concentracaoFinalMgMl, 4),
+    bolsaMl,
+    volumeDiluenteMl: volumeDiluenteMl !== undefined ? arred(volumeDiluenteMl, 2) : undefined,
+    volumeFinalMl: volumeFinalMl !== undefined ? arred(volumeFinalMl, 2) : undefined,
+    volumeFinalFaixaMl: volumeFinalFaixaMl
+      ? {
+          min: volumeFinalFaixaMl.min !== undefined ? arred(volumeFinalFaixaMl.min, 1) : undefined,
+          max: volumeFinalFaixaMl.max !== undefined ? arred(volumeFinalFaixaMl.max, 1) : undefined,
+        }
+      : undefined,
+    concentracaoFinalMgMl:
+      concentracaoFinalMgMl !== undefined ? arred(concentracaoFinalMgMl, 4) : undefined,
     mgPorKgEquivalente:
       mgPorKgEquivalente !== undefined ? arred(mgPorKgEquivalente, 2) : undefined,
     alertas,

@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { dataBR } from "@/lib/format";
-import type { Diluente, EntradaHistorico, Medicamento, ModoDiluicao, TipoArredondamento } from "@/lib/types";
+import type { Diluente, EntradaHistorico, Medicamento, ModoDiluicao, TipoArredondamento, Unidade } from "@/lib/types";
 
 const DILUENTES: Diluente[] = ["SF 0,9%", "SG 5%", "Água para injetáveis"];
+const UNIDADES: Unidade[] = ["mg", "g", "U", "UI"];
+
+type TipoDil = "bolsa" | "concentracao" | "volume" | "fabricante";
+type RegraPeso = "nenhuma" | "abaixo" | "ate";
 
 /** Formulário com campos em texto, para aceitar vírgula e campos vazios. */
 interface Form {
@@ -13,6 +17,7 @@ interface Form {
   novo: boolean;
   nome: string;
   descricao: string;
+  unidade: Unidade;
   mgFrasco: string;
   mlFrasco: string;
   usaReconst: boolean;
@@ -20,7 +25,16 @@ interface Form {
   reVolume: string;
   reInstrucao: string;
   diluente: Diluente;
+  tipoDil: TipoDil;
   volumeBolsa: string;
+  regraTipo: RegraPeso;
+  regraKg: string;
+  regraVolume: string;
+  faixaConcMin: string;
+  faixaConcMax: string;
+  faixaVolMin: string;
+  faixaVolMax: string;
+  instrucaoExtra: string;
   modoDil: ModoDiluicao;
   cMin: string;
   cMax: string;
@@ -29,7 +43,10 @@ interface Form {
   doseMaxKg: string;
   doseMaxMg: string;
   tempo: string;
+  infusaoTexto: string;
+  estabilidade: string;
   obs: string;
+  pendencias: string;
   arredTipo: TipoArredondamento;
   arredTol: string;
   revisado: boolean;
@@ -43,6 +60,7 @@ function paraForm(m: Medicamento): Form {
     novo: false,
     nome: m.nome,
     descricao: m.descricao ?? "",
+    unidade: m.unidade ?? "mg",
     mgFrasco: s(m.apresentacao.mgPorFrasco),
     mlFrasco: s(m.apresentacao.mlPorFrasco),
     usaReconst: Boolean(m.reconstituicao),
@@ -50,7 +68,27 @@ function paraForm(m: Medicamento): Form {
     reVolume: s(m.reconstituicao?.volumeMl),
     reInstrucao: m.reconstituicao?.instrucao ?? "",
     diluente: m.diluicao.diluente,
+    tipoDil:
+      m.diluicao.volumeBolsaMl || m.diluicao.volumeBolsaPorPeso?.length
+        ? "bolsa"
+        : m.diluicao.faixaConcentracao
+          ? "concentracao"
+          : m.diluicao.faixaVolumeFinalMl
+            ? "volume"
+            : "fabricante",
     volumeBolsa: s(m.diluicao.volumeBolsaMl),
+    regraTipo: m.diluicao.volumeBolsaPorPeso?.[0]
+      ? m.diluicao.volumeBolsaPorPeso[0].abaixoDeKg
+        ? "abaixo"
+        : "ate"
+      : "nenhuma",
+    regraKg: s(m.diluicao.volumeBolsaPorPeso?.[0]?.abaixoDeKg ?? m.diluicao.volumeBolsaPorPeso?.[0]?.ateKg),
+    regraVolume: s(m.diluicao.volumeBolsaPorPeso?.[0]?.volumeMl),
+    faixaConcMin: s(m.diluicao.faixaConcentracao?.min),
+    faixaConcMax: s(m.diluicao.faixaConcentracao?.max),
+    faixaVolMin: s(m.diluicao.faixaVolumeFinalMl?.min),
+    faixaVolMax: s(m.diluicao.faixaVolumeFinalMl?.max),
+    instrucaoExtra: m.diluicao.instrucaoExtra ?? "",
     modoDil: m.diluicao.modo,
     cMin: s(m.diluicao.concentracaoFinalMinMgMl),
     cMax: s(m.diluicao.concentracaoFinalMaxMgMl),
@@ -59,7 +97,10 @@ function paraForm(m: Medicamento): Form {
     doseMaxKg: s(m.doseMaxMgKg),
     doseMaxMg: s(m.doseMaxMg),
     tempo: s(m.tempoInfusaoMin),
+    infusaoTexto: m.infusaoTexto ?? "",
+    estabilidade: m.estabilidade ?? "",
     obs: m.observacoes ?? "",
+    pendencias: m.pendencias ?? "",
     arredTipo: m.arredondamento.tipo,
     arredTol: s(m.arredondamento.toleranciaPercent),
     revisado: m.revisado,
@@ -72,6 +113,7 @@ function formVazio(): Form {
     novo: true,
     nome: "",
     descricao: "",
+    unidade: "mg",
     mgFrasco: "",
     mlFrasco: "",
     usaReconst: false,
@@ -79,7 +121,16 @@ function formVazio(): Form {
     reVolume: "",
     reInstrucao: "",
     diluente: "SF 0,9%",
+    tipoDil: "bolsa",
     volumeBolsa: "100",
+    regraTipo: "nenhuma",
+    regraKg: "",
+    regraVolume: "",
+    faixaConcMin: "",
+    faixaConcMax: "",
+    faixaVolMin: "",
+    faixaVolMax: "",
+    instrucaoExtra: "",
     modoDil: "adicionar",
     cMin: "",
     cMax: "",
@@ -88,7 +139,10 @@ function formVazio(): Form {
     doseMaxKg: "",
     doseMaxMg: "",
     tempo: "",
+    infusaoTexto: "",
+    estabilidade: "",
     obs: "",
+    pendencias: "",
     arredTipo: "nenhum",
     arredTol: "",
     revisado: false,
@@ -112,6 +166,43 @@ function slug(nome: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+function diluicaoDeForm(f: Form): Partial<Medicamento["diluicao"]> {
+  switch (f.tipoDil) {
+    case "bolsa": {
+      const volume = lerNum(f.volumeBolsa, "volume da bolsa");
+      const regraVol = lerNum(f.regraVolume, "volume da bolsa pela regra de peso");
+      const regraKg = lerNum(f.regraKg, "peso da regra de bolsa");
+      const regras =
+        f.regraTipo !== "nenhuma"
+          ? [
+              {
+                abaixoDeKg: f.regraTipo === "abaixo" ? regraKg : undefined,
+                ateKg: f.regraTipo === "ate" ? regraKg : undefined,
+                volumeMl: regraVol ?? NaN,
+              },
+            ]
+          : undefined;
+      return { volumeBolsaMl: volume ?? NaN, volumeBolsaPorPeso: regras };
+    }
+    case "concentracao":
+      return {
+        faixaConcentracao: {
+          min: lerNum(f.faixaConcMin, "concentração mínima") ?? NaN,
+          max: lerNum(f.faixaConcMax, "concentração máxima") ?? NaN,
+        },
+      };
+    case "volume":
+      return {
+        faixaVolumeFinalMl: {
+          min: lerNum(f.faixaVolMin, "volume final mínimo"),
+          max: lerNum(f.faixaVolMax, "volume final máximo"),
+        },
+      };
+    default:
+      return { seguirFabricante: true };
+  }
+}
+
 function deForm(f: Form, existentes: Medicamento[]): Medicamento {
   let id = f.id;
   if (f.novo) {
@@ -123,9 +214,10 @@ function deForm(f: Form, existentes: Medicamento[]): Medicamento {
     id,
     nome: f.nome,
     descricao: f.descricao,
+    unidade: f.unidade,
     apresentacao: {
-      mgPorFrasco: lerNum(f.mgFrasco, "mg por frasco") ?? NaN,
-      mlPorFrasco: lerNum(f.mlFrasco, "mL por frasco") ?? NaN,
+      mgPorFrasco: lerNum(f.mgFrasco, "quantidade por frasco") ?? NaN,
+      mlPorFrasco: lerNum(f.mlFrasco, "mL por frasco"),
     },
     reconstituicao: f.usaReconst
       ? {
@@ -136,8 +228,9 @@ function deForm(f: Form, existentes: Medicamento[]): Medicamento {
       : undefined,
     diluicao: {
       diluente: f.diluente,
-      volumeBolsaMl: lerNum(f.volumeBolsa, "volume da bolsa") ?? NaN,
       modo: f.modoDil,
+      ...diluicaoDeForm(f),
+      instrucaoExtra: f.instrucaoExtra,
       concentracaoFinalMinMgMl: lerNum(f.cMin, "concentração final mínima"),
       concentracaoFinalMaxMgMl: lerNum(f.cMax, "concentração final máxima"),
     },
@@ -148,7 +241,10 @@ function deForm(f: Form, existentes: Medicamento[]): Medicamento {
     doseMaxMgKg: lerNum(f.doseMaxKg, "dose máxima (mg/kg)"),
     doseMaxMg: lerNum(f.doseMaxMg, "dose máxima (mg)"),
     tempoInfusaoMin: lerNum(f.tempo, "tempo de infusão"),
+    infusaoTexto: f.infusaoTexto,
+    estabilidade: f.estabilidade,
     observacoes: f.obs,
+    pendencias: f.pendencias,
     arredondamento: {
       tipo: f.arredTipo,
       toleranciaPercent: f.arredTipo === "frasco_tolerancia" ? lerNum(f.arredTol, "tolerância") : undefined,
@@ -296,9 +392,13 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
                       </span>
                     </strong>
                     <small>
-                      {m.apresentacao.mgPorFrasco} mg/{m.apresentacao.mlPorFrasco} mL · atualizado em{" "}
+                      {m.apresentacao.mgPorFrasco} {m.unidade ?? "mg"}
+                      {m.apresentacao.mlPorFrasco !== undefined ? `/${m.apresentacao.mlPorFrasco} mL` : ""} · atualizado em{" "}
                       {dataBR(m.atualizadoEm)}
                     </small>
+                    {m.pendencias && (
+                      <small style={{ display: "block", color: "var(--amarelo)" }}>Pendência: {m.pendencias}</small>
+                    )}
                   </div>
                   <div className="acoes">
                     <button
@@ -353,9 +453,17 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
           </div>
 
           <h3>Apresentação (frasco)</h3>
-          <div className="grade dois">
+          <div className="grade tres">
             <div className="campo">
-              <label htmlFor="f-mg">mg por frasco</label>
+              <label htmlFor="f-un">Unidade de dose</label>
+              <select id="f-un" value={form.unidade} onChange={(e) => set("unidade", e.target.value as Unidade)}>
+                {UNIDADES.map((u) => (
+                  <option key={u}>{u}</option>
+                ))}
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor="f-mg">Quantidade por frasco ({form.unidade})</label>
               <input id="f-mg" inputMode="decimal" value={form.mgFrasco} onChange={(e) => set("mgFrasco", e.target.value)} />
             </div>
             <div className="campo">
@@ -403,9 +511,45 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
               </select>
             </div>
             <div className="campo">
-              <label htmlFor="f-bolsa">Volume da bolsa (mL)</label>
-              <input id="f-bolsa" inputMode="decimal" value={form.volumeBolsa} onChange={(e) => set("volumeBolsa", e.target.value)} />
+              <label htmlFor="f-tipodil">Regra de diluição</label>
+              <select id="f-tipodil" value={form.tipoDil} onChange={(e) => set("tipoDil", e.target.value as TipoDil)}>
+                <option value="bolsa">Volume fixo da bolsa (pode variar com o peso)</option>
+                <option value="concentracao">Faixa de concentração final</option>
+                <option value="volume">Faixa de volume final</option>
+                <option value="fabricante">Seguir recomendação do fabricante</option>
+              </select>
             </div>
+            {form.tipoDil === "bolsa" && (
+              <div className="campo">
+                <label htmlFor="f-bolsa">Volume da bolsa (mL)</label>
+                <input id="f-bolsa" inputMode="decimal" value={form.volumeBolsa} onChange={(e) => set("volumeBolsa", e.target.value)} />
+                <small>Volume padrão. Abaixo, você pode definir um volume diferente por peso.</small>
+              </div>
+            )}
+            {form.tipoDil === "concentracao" && (
+              <>
+                <div className="campo">
+                  <label htmlFor="f-fcmin">Concentração final mínima ({form.unidade}/mL)</label>
+                  <input id="f-fcmin" inputMode="decimal" value={form.faixaConcMin} onChange={(e) => set("faixaConcMin", e.target.value)} />
+                </div>
+                <div className="campo">
+                  <label htmlFor="f-fcmax">Concentração final máxima ({form.unidade}/mL)</label>
+                  <input id="f-fcmax" inputMode="decimal" value={form.faixaConcMax} onChange={(e) => set("faixaConcMax", e.target.value)} />
+                </div>
+              </>
+            )}
+            {form.tipoDil === "volume" && (
+              <>
+                <div className="campo">
+                  <label htmlFor="f-fvmin">Volume final mínimo (mL) — opcional</label>
+                  <input id="f-fvmin" inputMode="decimal" value={form.faixaVolMin} onChange={(e) => set("faixaVolMin", e.target.value)} />
+                </div>
+                <div className="campo">
+                  <label htmlFor="f-fvmax">Volume final máximo (mL) — opcional</label>
+                  <input id="f-fvmax" inputMode="decimal" value={form.faixaVolMax} onChange={(e) => set("faixaVolMax", e.target.value)} />
+                </div>
+              </>
+            )}
             <div className="campo">
               <label htmlFor="f-modo">Como descrever</label>
               <select id="f-modo" value={form.modoDil} onChange={(e) => set("modoDil", e.target.value as ModoDiluicao)}>
@@ -414,16 +558,45 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
               </select>
             </div>
             <div className="campo">
-              <label htmlFor="f-cmin">Conc. final mínima (mg/mL) — opcional</label>
+              <label htmlFor="f-cmin">Alerta: conc. final mínima ({form.unidade}/mL) — opcional</label>
               <input id="f-cmin" inputMode="decimal" value={form.cMin} onChange={(e) => set("cMin", e.target.value)} />
             </div>
             <div className="campo">
-              <label htmlFor="f-cmax">Conc. final máxima (mg/mL) — opcional</label>
+              <label htmlFor="f-cmax">Alerta: conc. final máxima ({form.unidade}/mL) — opcional</label>
               <input id="f-cmax" inputMode="decimal" value={form.cMax} onChange={(e) => set("cMax", e.target.value)} />
             </div>
           </div>
 
-          <h3>Doses usuais (mg/kg)</h3>
+          {form.tipoDil === "bolsa" && (
+            <div className="grade tres">
+              <div className="campo">
+                <label htmlFor="f-rt">Volume diferente por peso</label>
+                <select id="f-rt" value={form.regraTipo} onChange={(e) => set("regraTipo", e.target.value as RegraPeso)}>
+                  <option value="nenhuma">Não (sempre o volume padrão)</option>
+                  <option value="abaixo">Se o peso for MENOR que…</option>
+                  <option value="ate">Se o peso for MENOR OU IGUAL a…</option>
+                </select>
+              </div>
+              {form.regraTipo !== "nenhuma" && (
+                <>
+                  <div className="campo">
+                    <label htmlFor="f-rkg">Peso limite (kg)</label>
+                    <input id="f-rkg" inputMode="decimal" value={form.regraKg} onChange={(e) => set("regraKg", e.target.value)} />
+                  </div>
+                  <div className="campo">
+                    <label htmlFor="f-rvol">Volume da bolsa nesse caso (mL)</label>
+                    <input id="f-rvol" inputMode="decimal" value={form.regraVolume} onChange={(e) => set("regraVolume", e.target.value)} />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          <div className="campo">
+            <label htmlFor="f-extra">Instrução extra de preparo (opcional)</label>
+            <input id="f-extra" value={form.instrucaoExtra} onChange={(e) => set("instrucaoExtra", e.target.value)} />
+          </div>
+
+          <h3>Doses usuais ({form.unidade}/kg)</h3>
           {form.doses.map((d, i) => (
             <div className="linha-dose" key={i}>
               <div>
@@ -435,7 +608,7 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
                 />
               </div>
               <div>
-                <label htmlFor={`d-m-${i}`}>mg/kg</label>
+                <label htmlFor={`d-m-${i}`}>{form.unidade}/kg</label>
                 <input
                   id={`d-m-${i}`}
                   inputMode="decimal"
@@ -491,8 +664,20 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
           </div>
 
           <div className="campo">
+            <label htmlFor="f-inf">Infusão em texto (substitui o tempo fixo na nota) — opcional</label>
+            <textarea id="f-inf" rows={3} value={form.infusaoTexto} onChange={(e) => set("infusaoTexto", e.target.value)} />
+          </div>
+          <div className="campo">
+            <label htmlFor="f-est">Estabilidade (aparece na nota) — opcional</label>
+            <textarea id="f-est" rows={2} value={form.estabilidade} onChange={(e) => set("estabilidade", e.target.value)} />
+          </div>
+          <div className="campo">
             <label htmlFor="f-obs">Observações (aparecem na nota)</label>
             <textarea id="f-obs" rows={3} value={form.obs} onChange={(e) => set("obs", e.target.value)} />
+          </div>
+          <div className="campo">
+            <label htmlFor="f-pend">Pendências para conferir (só aparecem aqui no /admin)</label>
+            <textarea id="f-pend" rows={3} value={form.pendencias} onChange={(e) => set("pendencias", e.target.value)} />
           </div>
 
           <div className="campo">

@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { calcular } from "@/lib/calc";
+import { calcular, unidadeDe } from "@/lib/calc";
 import { gerarNota } from "@/lib/nota";
 import { num, plural } from "@/lib/format";
-import type { EntradaCalculo, Medicamento, ModoCalculo } from "@/lib/types";
+import type { EntradaCalculo, Medicamento, ModoCalculo, ResultadoCalculo } from "@/lib/types";
 
 /** Aceita vírgula ou ponto como separador decimal. */
 function lerNumero(texto: string): number | undefined {
@@ -12,6 +12,17 @@ function lerNumero(texto: string): number | undefined {
   if (!limpo) return undefined;
   const n = Number(limpo);
   return Number.isFinite(n) ? n : undefined;
+}
+
+function textoVolumeFinal(r: ResultadoCalculo): string {
+  if (r.volumeFinalMl !== undefined) return `${num(r.volumeFinalMl)} mL`;
+  const f = r.volumeFinalFaixaMl;
+  if (f) {
+    if (f.min !== undefined && f.max !== undefined) return `${num(f.min, 1)} a ${num(f.max, 1)} mL`;
+    if (f.max !== undefined) return `até ${num(f.max, 1)} mL`;
+    if (f.min !== undefined) return `≥ ${num(f.min, 1)} mL`;
+  }
+  return "—";
 }
 
 export default function Calculator({ medicamentos }: { medicamentos: Medicamento[] }) {
@@ -26,6 +37,8 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
   const [copiado, setCopiado] = useState<"ok" | "erro" | null>(null);
 
   const med = medicamentos.find((m) => m.id === medId);
+  const un = med ? unidadeDe(med) : "mg";
+  const exigePeso = Boolean(med?.diluicao.volumeBolsaPorPeso?.length);
 
   const entrada: EntradaCalculo = {
     modo,
@@ -99,7 +112,10 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
           </select>
           {med && (
             <small>
-              Frasco de {num(med.apresentacao.mgPorFrasco)} mg / {num(med.apresentacao.mlPorFrasco)} mL
+              Frasco de {num(med.apresentacao.mgPorFrasco)} {un}
+              {med.apresentacao.mlPorFrasco !== undefined
+                ? ` / ${num(med.apresentacao.mlPorFrasco)} mL`
+                : ""}
               {med.descricao ? ` — ${med.descricao}` : ""}
             </small>
           )}
@@ -120,7 +136,7 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
             Frascos inteiros
           </button>
           <button type="button" className="aba" aria-pressed={modo === "mg"} onClick={() => setModo("mg")}>
-            Dose em mg
+            Dose em {un}
           </button>
         </div>
 
@@ -128,7 +144,7 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
           {(modo === "mgkg" || modo === "frascos") && (
             <div className="campo">
               <label htmlFor="peso">
-                Peso do paciente (kg){modo === "frascos" ? " — opcional" : ""}
+                Peso do paciente (kg){modo === "frascos" && !exigePeso ? " — opcional" : ""}
               </label>
               <input
                 id="peso"
@@ -142,7 +158,7 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
 
           {modo === "mgkg" && (
             <div className="campo">
-              <label htmlFor="dosekg">Dose (mg/kg)</label>
+              <label htmlFor="dosekg">Dose ({un}/kg)</label>
               <input
                 id="dosekg"
                 inputMode="decimal"
@@ -160,7 +176,7 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
                       onClick={() => setDoseKg(String(d.mgPorKg).replace(".", ","))}
                       title={d.rotulo}
                     >
-                      {num(d.mgPorKg)} mg/kg · {d.rotulo}
+                      {num(d.mgPorKg)} {un}/kg · {d.rotulo}
                     </button>
                   ))}
                 </div>
@@ -183,7 +199,7 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
 
           {modo === "mg" && (
             <div className="campo">
-              <label htmlFor="dosemg">Dose total (mg)</label>
+              <label htmlFor="dosemg">Dose total ({un})</label>
               <input
                 id="dosemg"
                 inputMode="decimal"
@@ -191,13 +207,13 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
                 value={doseMg}
                 onChange={(e) => setDoseMg(e.target.value)}
               />
-              <small>Peso opcional (usado só para conferir os limites em mg/kg).</small>
+              <small>{exigePeso ? "O peso define o volume da bolsa de diluição." : `Peso opcional (usado só para conferir os limites em ${un}/kg).`}</small>
             </div>
           )}
 
           {modo === "mg" && (
             <div className="campo">
-              <label htmlFor="peso2">Peso do paciente (kg) — opcional</label>
+              <label htmlFor="peso2">Peso do paciente (kg){exigePeso ? "" : " — opcional"}</label>
               <input
                 id="peso2"
                 inputMode="decimal"
@@ -229,15 +245,15 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
             )}
             {resultado.arredondada && (
               <div className="aviso azul">
-                Dose calculada de {num(resultado.doseCalculadaMg)} mg arredondada para{" "}
-                {num(resultado.doseMg)} mg conforme a regra do medicamento.
+                Dose calculada de {num(resultado.doseCalculadaMg)} {un} arredondada para{" "}
+                {num(resultado.doseMg)} {un} conforme a regra do medicamento.
               </div>
             )}
 
             <div className="resumo">
               <div className="metrica">
                 <span>Dose total</span>
-                <strong>{num(resultado.doseMg)} mg</strong>
+                <strong>{num(resultado.doseMg)} {un}</strong>
               </div>
               <div className="metrica">
                 <span>Frascos</span>
@@ -247,20 +263,20 @@ export default function Calculator({ medicamentos }: { medicamentos: Medicamento
               </div>
               <div className="metrica">
                 <span>Aspirar</span>
-                <strong>{num(resultado.volumeAspirarMl)} mL</strong>
+                <strong>{resultado.volumeAspirarMl !== undefined ? `${num(resultado.volumeAspirarMl)} mL` : "—"}</strong>
               </div>
               <div className="metrica">
                 <span>Volume final</span>
-                <strong>{num(resultado.volumeFinalMl)} mL</strong>
+                <strong>{textoVolumeFinal(resultado)}</strong>
               </div>
             </div>
 
             {resultado.mgPorKgEquivalente !== undefined && modo !== "mgkg" && (
-              <p>Equivale a {num(resultado.mgPorKgEquivalente)} mg/kg.</p>
+              <p>Equivale a {num(resultado.mgPorKgEquivalente)} {un}/kg.</p>
             )}
             {resultado.sobraMg > 0 && (
               <p>
-                Sobra de {num(resultado.sobraMg)} mg no último frasco (descartar).
+                Sobra de {num(resultado.sobraMg)} {un} no último frasco (descartar).
               </p>
             )}
           </>
