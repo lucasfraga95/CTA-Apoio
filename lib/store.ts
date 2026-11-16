@@ -94,23 +94,33 @@ export async function gravarMedicamentos(
 
   // A API exige "create" para chaves novas e "update" para as existentes
   // (o "upsert" falha com "Item not found" quando a chave ainda não existe).
-  const consulta = await fetch(base, { headers: cabecalhos, cache: "no-store" });
-  if (!consulta.ok) return erroVercel("consultar", consulta);
-  const itens = (await consulta.json().catch(() => [])) as { key?: string }[];
-  const existentes = new Set(Array.isArray(itens) ? itens.map((i) => i.key) : []);
-  const operacao = (chave: string) => (existentes.has(chave) ? "update" : "create");
+  // A existência é checada pela leitura do Edge Config (não precisa de permissão extra do token).
+  const [jaTemMeds, jaTemHist] = await Promise.all([
+    lerChave(CHAVE_MEDS).then((v) => v !== undefined).catch(() => false),
+    lerChave(CHAVE_HIST).then((v) => v !== undefined).catch(() => false),
+  ]);
 
-  const resp = await fetch(base, {
-    method: "PATCH",
-    headers: cabecalhos,
-    body: JSON.stringify({
-      items: [
-        { operation: operacao(CHAVE_MEDS), key: CHAVE_MEDS, value: lista },
-        { operation: operacao(CHAVE_HIST), key: CHAVE_HIST, value: historico },
-      ],
-    }),
-    cache: "no-store",
-  });
+  const enviar = (meds: "create" | "update", hist: "create" | "update") =>
+    fetch(base, {
+      method: "PATCH",
+      headers: cabecalhos,
+      body: JSON.stringify({
+        items: [
+          { operation: meds, key: CHAVE_MEDS, value: lista },
+          { operation: hist, key: CHAVE_HIST, value: historico },
+        ],
+      }),
+      cache: "no-store",
+    });
+
+  const op = (existe: boolean) => (existe ? "update" : "create") as "create" | "update";
+  let resp = await enviar(op(jaTemMeds), op(jaTemHist));
+
+  // A leitura pode estar poucos segundos atrasada; se a operação não casar com o
+  // estado real da chave, tenta uma vez com a operação oposta.
+  if (!resp.ok && (resp.status === 404 || resp.status === 409)) {
+    resp = await enviar(op(!jaTemMeds), op(!jaTemHist));
+  }
 
   if (!resp.ok) return erroVercel("gravar", resp);
   return { ok: true };
