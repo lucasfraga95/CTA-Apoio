@@ -1,5 +1,5 @@
 import "server-only";
-import { get } from "@vercel/edge-config";
+import { createClient } from "@vercel/edge-config";
 import { MEDICAMENTOS_SEED } from "./seed";
 import type { EntradaHistorico, Medicamento } from "./types";
 
@@ -13,13 +13,24 @@ export interface LeituraMedicamentos {
 const CHAVE_MEDS = "medicamentos";
 const CHAVE_HIST = "historico";
 
+/** A Vercel chama a variável de EDGE_CONFIG ou GLOBAL_CONFIG, conforme a versão da interface. */
+function conexao(): string | undefined {
+  return process.env.EDGE_CONFIG || process.env.GLOBAL_CONFIG || undefined;
+}
+
+async function lerChave<T>(chave: string): Promise<T | undefined> {
+  const c = conexao();
+  if (!c) return undefined;
+  return createClient(c).get<T>(chave);
+}
+
 /** Lê a base. Sem Edge Config conectado (ou vazio), devolve os dados de exemplo. */
 export async function lerMedicamentos(): Promise<LeituraMedicamentos> {
-  if (!process.env.EDGE_CONFIG) {
+  if (!conexao()) {
     return { lista: MEDICAMENTOS_SEED, origem: "exemplo" };
   }
   try {
-    const valor = await get<Medicamento[]>(CHAVE_MEDS);
+    const valor = await lerChave<Medicamento[]>(CHAVE_MEDS);
     if (!Array.isArray(valor)) return { lista: MEDICAMENTOS_SEED, origem: "exemplo" };
     return { lista: valor, origem: "edge-config" };
   } catch {
@@ -28,9 +39,9 @@ export async function lerMedicamentos(): Promise<LeituraMedicamentos> {
 }
 
 export async function lerHistorico(): Promise<EntradaHistorico[]> {
-  if (!process.env.EDGE_CONFIG) return [];
+  if (!conexao()) return [];
   try {
-    const valor = await get<EntradaHistorico[]>(CHAVE_HIST);
+    const valor = await lerChave<EntradaHistorico[]>(CHAVE_HIST);
     return Array.isArray(valor) ? valor : [];
   } catch {
     return [];
@@ -38,14 +49,14 @@ export async function lerHistorico(): Promise<EntradaHistorico[]> {
 }
 
 export function gravacaoConfigurada(): boolean {
-  return Boolean(process.env.EDGE_CONFIG && process.env.VERCEL_API_TOKEN);
+  return Boolean(conexao() && process.env.VERCEL_API_TOKEN);
 }
 
 function idEdgeConfig(): string | null {
   try {
-    const conexao = process.env.EDGE_CONFIG;
-    if (!conexao) return null;
-    const id = new URL(conexao).pathname.replace(/^\//, "");
+    const c = conexao();
+    if (!c) return null;
+    const id = new URL(c).pathname.replace(/^\//, "");
     return id.startsWith("ecfg_") ? id : null;
   } catch {
     return null;
@@ -62,7 +73,7 @@ export async function gravarMedicamentos(
   if (!id || !token) {
     return {
       ok: false,
-      erro: "Gravação não configurada: faltam EDGE_CONFIG e/ou VERCEL_API_TOKEN nas variáveis de ambiente.",
+      erro: "Gravação não configurada: faltam EDGE_CONFIG (ou GLOBAL_CONFIG) e/ou VERCEL_API_TOKEN nas variáveis de ambiente.",
     };
   }
 

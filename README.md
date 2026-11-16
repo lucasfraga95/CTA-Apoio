@@ -29,7 +29,8 @@ Tudo roda só na Vercel, sem outro serviço:
    Cada novo envio ao GitHub republica o site sozinho.
 2. **Criar o Edge Config**: no projeto, aba *Storage* → *Create Database* → *Edge Config*.
    Dê um nome (ex.: `cta-apoio`) e **conecte ao projeto** `cta-apoio`. Isso cria automaticamente a
-   variável `EDGE_CONFIG`.
+   variável `EDGE_CONFIG` (em versões novas da interface, o produto se chama *Global Config* e a
+   variável `GLOBAL_CONFIG`; o site aceita as duas).
 3. **Criar um token**: Vercel → *Account Settings → Tokens* → criar um token (ex.: `cta-apoio-admin`).
    Se o projeto estiver dentro de um Team, escolha o escopo desse Team. Copie o valor, que só aparece
    uma vez.
@@ -71,4 +72,4 @@ npm run dev                  # http://localhost:3000
 npm test                     # testes dos cálculos
 ```
 
-Sem `EDGE_CONFIG` e `VERCEL_API_TOKEN` o `/admin` abre, mas não grava (aparece um aviso).
+Sem `EDGE_CONFIG`/`GLOBAL_CONFIG` e `VERCEL_API_TOKEN` o `/admin` abre, mas não grava (aparece um aviso).
