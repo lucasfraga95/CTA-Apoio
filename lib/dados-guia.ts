@@ -20,12 +20,13 @@ export const MEDICAMENTOS_GUIA: Medicamento[] = [
       diluente: "Água para injetáveis",
       volumeMl: 10,
       instrucao:
-        "Girar suavemente, sem agitar; deixar a solução em repouso por 5 minutos.",
+        "Agulha 21G (0,8 mm) ou menor; direcionar o jato para a parede do frasco. Girar suavemente, sem agitar (é comum formar espuma); deixar a solução em repouso por 5 minutos.",
     },
     diluicao: {
       diluente: "SF 0,9%",
       modo: "completar",
       volumeBolsaMl: 250,
+      instrucaoExtra: "Introduzir lentamente na bolsa e misturar suavemente. Diluir somente com SF 0,9%.",
       concentracaoFinalMinMgMl: 0.4,
       concentracaoFinalMaxMgMl: 4,
     },
@@ -36,11 +37,11 @@ export const MEDICAMENTOS_GUIA: Medicamento[] = [
     infusaoTexto:
       "Mínimo de 2 h na infusão inicial. Na artrite reumatoide, se as 3 primeiras infusões foram toleradas em 2 h, as seguintes podem durar no mínimo 1 h. Nas demais indicações (5 mg/kg): mínimo de 2 h.",
     estabilidade:
-      "Sem conservantes: iniciar a infusão em até 3 h após a reconstituição e a diluição. Após diluição: 24 h sob refrigeração.",
+      "Sem conservantes: iniciar a infusão em até 3 h após a reconstituição e a diluição. Em condições assépticas, pode ser usada em até 24 h entre 2 e 8 °C. Não guardar a sobra da solução.",
     observacoes:
-      "Usar bomba de infusão com filtro de 0,2 µm. Não administrar em infecção ativa clinicamente importante. Evitar agitação vigorosa (forma espuma). Observar por pelo menos 1 h após a infusão.",
+      "Usar equipo com filtro em linha estéril, apirogênico e de baixa ligação a proteínas (poro de 1,2 µm ou menor; o guia do serviço cita 0,2 µm) e bomba de infusão. Não infundir junto com outros medicamentos no mesmo equipo. Não administrar em infecção ativa clinicamente importante, insuficiência cardíaca ou alergia a proteínas de camundongo. Contém sacarose (atenção em diabéticos). Solução reconstituída: de incolor a amarelada e opalescente, pode ter partículas translúcidas finas; não usar com partículas opacas ou mudança de cor. Observar por pelo menos 1 h após a infusão. Descartar a sobra.",
     pendencias:
-      "A diluição estava em vermelho no guia. A retirada de SF da bolsa aparece no guia como opção ('pode ser realizado'); o cadastro usa essa forma (volume final de 250 mL). Confirmar.",
+      "Conferido com a bula do paciente (Remicade, aprovada em 06/10/2023): reconstituição, diluição em 250 mL de SF 0,9%, filtro e estabilidade batem. Essa bula NÃO traz doses em mg/kg nem dose máxima: as doses (3 e 5 mg/kg) vêm do guia do serviço e não há dose máxima cadastrada; para isso é preciso a bula do profissional. A retirada de SF da bolsa é descrita na bula como opção ('pode ser realizado') e é a forma usada aqui (volume final de 250 mL): confirmar a prática do serviço.",
     arredondamento: SEM_ARRED,
     revisado: false,
     atualizadoEm: DATA,

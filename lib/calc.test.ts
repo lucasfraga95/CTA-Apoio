@@ -114,9 +114,12 @@ describe("infliximabe (bolsa fixa de 250 mL)", () => {
     expect(linhas[1]).toBe(
       "Total: 4 frascos (frascos inteiros, sem sobra). " +
         "Reconstituir cada frasco com 10 mL de Água para injetáveis. " +
-        "Girar suavemente, sem agitar; deixar a solução em repouso por 5 minutos. " +
+        "Agulha 21G (0,8 mm) ou menor; direcionar o jato para a parede do frasco. " +
+        "Girar suavemente, sem agitar (é comum formar espuma); deixar a solução em repouso por 5 minutos. " +
         "Após, aspirar 40 mL do medicamento e completar com SF 0,9% até o volume final de 250 mL " +
-        "(bolsa de 250 mL, retirando antes 40 mL do soro). Concentração final: 1,6 mg/mL.",
+        "(bolsa de 250 mL, retirando antes 40 mL do soro). " +
+        "Introduzir lentamente na bolsa e misturar suavemente. Diluir somente com SF 0,9%. " +
+        "Concentração final: 1,6 mg/mL.",
     );
     expect(linhas).toHaveLength(3); // cabeçalho + parágrafo + aviso de "não revisado"
   });
