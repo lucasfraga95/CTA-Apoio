@@ -110,7 +110,11 @@ export async function gravarMedicamentos(
       erro:
         resp.status === 401 || resp.status === 403
           ? "A Vercel recusou o token (VERCEL_API_TOKEN). Confira o token e, se for o caso, o VERCEL_TEAM_ID."
-          : `Falha ao gravar na Vercel (HTTP ${resp.status}).`,
+          : resp.status === 404
+            ? process.env.VERCEL_TEAM_ID
+              ? "A Vercel não encontrou o Edge Config. Confira se o VERCEL_TEAM_ID é o do Team onde ele foi criado e se o token tem escopo desse Team."
+              : "A Vercel não encontrou o Edge Config. Se o projeto está em um Team, defina a variável VERCEL_TEAM_ID e faça um novo deploy."
+            : `Falha ao gravar na Vercel (HTTP ${resp.status}).`,
     };
   }
   return { ok: true };
