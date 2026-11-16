@@ -494,7 +494,7 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
                 <input id="f-rv" inputMode="decimal" value={form.reVolume} onChange={(e) => set("reVolume", e.target.value)} />
               </div>
               <div className="campo">
-                <label htmlFor="f-ri">Instrução (opcional)</label>
+                <label htmlFor="f-ri">Instrução de preparo (vai na nota) — opcional</label>
                 <input id="f-ri" value={form.reInstrucao} onChange={(e) => set("reInstrucao", e.target.value)} />
               </div>
             </div>
@@ -592,7 +592,7 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
             </div>
           )}
           <div className="campo">
-            <label htmlFor="f-extra">Instrução extra de preparo (opcional)</label>
+            <label htmlFor="f-extra">Instrução extra de preparo (vai na nota) — opcional</label>
             <input id="f-extra" value={form.instrucaoExtra} onChange={(e) => set("instrucaoExtra", e.target.value)} />
           </div>
 
@@ -658,21 +658,21 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
               </div>
             )}
             <div className="campo">
-              <label htmlFor="f-tempo">Tempo de infusão (min)</label>
+              <label htmlFor="f-tempo">Tempo de infusão (min) — só consulta</label>
               <input id="f-tempo" inputMode="numeric" value={form.tempo} onChange={(e) => set("tempo", e.target.value)} />
             </div>
           </div>
 
           <div className="campo">
-            <label htmlFor="f-inf">Infusão em texto (substitui o tempo fixo na nota) — opcional</label>
+            <label htmlFor="f-inf">Infusão em texto (só consulta; não vai na nota) — opcional</label>
             <textarea id="f-inf" rows={3} value={form.infusaoTexto} onChange={(e) => set("infusaoTexto", e.target.value)} />
           </div>
           <div className="campo">
-            <label htmlFor="f-est">Estabilidade (aparece na nota) — opcional</label>
+            <label htmlFor="f-est">Estabilidade (só consulta; não vai na nota) — opcional</label>
             <textarea id="f-est" rows={2} value={form.estabilidade} onChange={(e) => set("estabilidade", e.target.value)} />
           </div>
           <div className="campo">
-            <label htmlFor="f-obs">Observações (aparecem na nota)</label>
+            <label htmlFor="f-obs">Observações (só consulta; não vão na nota)</label>
             <textarea id="f-obs" rows={3} value={form.obs} onChange={(e) => set("obs", e.target.value)} />
           </div>
           <div className="campo">

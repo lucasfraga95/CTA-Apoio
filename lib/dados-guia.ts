@@ -20,7 +20,7 @@ export const MEDICAMENTOS_GUIA: Medicamento[] = [
       diluente: "Água para injetáveis",
       volumeMl: 10,
       instrucao:
-        "Concentração de 10 mg/mL. Girar suavemente, sem agitar; deixar a solução em repouso por 5 minutos.",
+        "Girar suavemente, sem agitar; deixar a solução em repouso por 5 minutos.",
     },
     diluicao: {
       diluente: "SF 0,9%",
@@ -55,12 +55,13 @@ export const MEDICAMENTOS_GUIA: Medicamento[] = [
       modo: "completar",
       volumeBolsaMl: 100,
       volumeBolsaPorPeso: [{ abaixoDeKg: 30, volumeMl: 50 }],
+      instrucaoExtra: "Inverter suavemente a bolsa para misturar, sem agitar.",
     },
     dosesUsuais: [],
     tempoInfusaoMin: 60,
     estabilidade: "Após diluição: 24 h sob refrigeração.",
     observacoes:
-      "Adicionar lentamente a dose à bolsa e inverter suavemente para misturar, sem agitar. Compatível com bolsas de PP, PE, PVC e vidro. Só infundir soluções translúcidas a opalescentes, incolores a amarelo pálido, sem partículas.",
+      "Compatível com bolsas de PP, PE, PVC e vidro. Só infundir soluções translúcidas a opalescentes, incolores a amarelo pálido, sem partículas.",
     pendencias:
       "A diluição (50 mL abaixo de 30 kg; 100 mL a partir de 30 kg) estava em vermelho no guia e descreve 'volume final'; o cadastro usa 'completar até o volume da bolsa'. Confirmar.",
     arredondamento: SEM_ARRED,
@@ -76,20 +77,19 @@ export const MEDICAMENTOS_GUIA: Medicamento[] = [
       diluente: "Água para injetáveis",
       volumeMl: 4.8,
       instrucao:
-        "Direcionar o jato para a parede do frasco; girar suavemente por pelo menos 15 s, sem agitar vigorosamente. Repouso de até 20 min em temperatura ambiente; se não dissolver, aguardar mais 10 min. Não usar se não dissolver em 30 min. Concentração de 60 mg/mL.",
+        "Direcionar o jato para a parede do frasco; girar suavemente por pelo menos 15 s, sem agitar vigorosamente; deixar em repouso até 20 min (se não dissolver, mais 10 min; não usar se não dissolver em 30 min).",
     },
     diluicao: {
       diluente: "SF 0,9%",
       modo: "adicionar",
       volumeBolsaMl: 250,
-      instrucaoExtra: "Ao final da infusão, lavar a linha com 30 mL de SF 0,9%.",
     },
     dosesUsuais: [],
     tempoInfusaoMin: 30,
     estabilidade:
       "Após reconstituição: 8 h sob refrigeração. Após diluição: 24 h (até 12 h em temperatura ambiente de 20 a 25 °C e o restante a 2 a 8 °C).",
     observacoes:
-      "Observar sinais de hipersensibilidade por cerca de 2 h após as 2 primeiras infusões e por cerca de 1 h nas seguintes.",
+      "Ao final da infusão, lavar a linha com 30 mL de SF 0,9%. Observar sinais de hipersensibilidade por cerca de 2 h após as 2 primeiras infusões e por cerca de 1 h nas seguintes.",
     pendencias:
       "O guia diz 'concentração 60 mg/mL' após injetar 5 mL em 250 mL, o que não bate (seria cerca de 1,2 mg/mL); 60 mg/mL é a concentração do frasco reconstituído. A diluição estava em vermelho no guia. Confirmar.",
     arredondamento: SEM_ARRED,

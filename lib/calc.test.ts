@@ -59,15 +59,20 @@ describe("tocilizumabe (bolsa 50 mL < 30 kg, 100 mL >= 30 kg)", () => {
     expect(r.bolsaMl).toBe(100);
   });
 
-  it("a nota traz dose, frascos, volume a aspirar e bolsa", () => {
+  it("a nota é curta: dose, frascos, aspirar, bolsa e concentração final", () => {
     const n = nota(toci, { modo: "mgkg", pesoKg: 60, doseMgPorKg: 8 });
-    expect(n).toContain("TOCILIZUMABE 480 mg");
-    expect(n).toContain("6 frascos");
-    expect(n).toContain("aspirar 24 mL");
-    expect(n).toContain("bolsa de 100 mL");
-    expect(n).toContain("volume final de 100 mL");
-    expect(n).toContain("Infundir em 60 minutos");
-    expect(n).toContain("NÃO foi revisado");
+    expect(n).toContain("TOCILIZUMABE 480 mg IV (8 mg/kg x 60 kg = 480 mg)");
+    expect(n).toContain("Total: 6 frascos (frascos inteiros, sem sobra).");
+    expect(n).toContain("Aspirar 24 mL do medicamento e completar com SF 0,9% até o volume final de 100 mL");
+    expect(n).toContain("retirando antes 24 mL do soro");
+    expect(n).toContain("Inverter suavemente a bolsa para misturar, sem agitar.");
+    expect(n).toContain("Concentração final: 4,8 mg/mL.");
+    expect(n).toContain("cadastro ainda NÃO revisado");
+  });
+
+  it("a nota não traz infusão, estabilidade, observações nem rodapé", () => {
+    const n = nota(toci, { modo: "mgkg", pesoKg: 60, doseMgPorKg: 8 });
+    expect(n).not.toMatch(/Infundir|Infusão|Estabilidade|Obs\.|Apresentação|Conferir com a farmácia/);
   });
 });
 
@@ -98,12 +103,24 @@ describe("infliximabe (bolsa fixa de 250 mL)", () => {
     expect(r.alertas.join(" ")).toMatch(/abaixo do mínimo/);
   });
 
-  it("a nota inclui reconstituição e preparo", () => {
-    const n = nota(infli, { modo: "mgkg", pesoKg: 70, doseMgPorKg: 5 });
-    expect(n).toContain("reconstituir cada frasco com 10 mL de Água para injetáveis");
-    expect(n).toContain("total de 40 mL para 4 frascos");
-    expect(n).toContain("aspirar 35 mL");
-    expect(n).toContain("volume final de 250 mL");
+  it("a nota fica no formato curto aprovado (80 kg x 5 mg/kg = 400 mg)", () => {
+    const e: EntradaCalculo = { modo: "mgkg", pesoKg: 80, doseMgPorKg: 5 };
+    const linhas = gerarNota(infli, e, calcular(infli, e));
+    expect(linhas[0]).toBe("INFLIXIMABE 400 mg IV (5 mg/kg x 80 kg = 400 mg)");
+    expect(linhas[1]).toBe(
+      "Total: 4 frascos (frascos inteiros, sem sobra). " +
+        "Reconstituir cada frasco com 10 mL de Água para injetáveis. " +
+        "Girar suavemente, sem agitar; deixar a solução em repouso por 5 minutos. " +
+        "Após, aspirar 40 mL do medicamento e completar com SF 0,9% até o volume final de 250 mL " +
+        "(bolsa de 250 mL, retirando antes 40 mL do soro). Concentração final: 1,6 mg/mL.",
+    );
+    expect(linhas).toHaveLength(3); // cabeçalho + parágrafo + aviso de "não revisado"
+  });
+
+  it("depois de revisado, a nota tem só o cabeçalho e o parágrafo", () => {
+    const med = { ...infli, revisado: true };
+    const e: EntradaCalculo = { modo: "mgkg", pesoKg: 80, doseMgPorKg: 5 };
+    expect(gerarNota(med, e, calcular(med, e))).toHaveLength(2);
   });
 });
 
@@ -116,11 +133,13 @@ describe("vedolizumabe (bolsa de 250 mL)", () => {
     expect(r.volumeFinalMl).toBe(255);
   });
 
-  it("a nota lembra de lavar a linha com 30 mL de SF 0,9%", () => {
+  it("a nota traz reconstituição, preparo na bolsa de 250 mL e concentração final", () => {
     const n = nota(vedo, { modo: "frascos", frascos: 1 });
-    expect(n).toContain("adicionar a uma bolsa de 250 mL de SF 0,9%");
-    expect(n).toContain("lavar a linha com 30 mL");
-    expect(n).toContain("Infundir em 30 minutos");
+    expect(n).toContain("Reconstituir cada frasco com 4,8 mL de Água para injetáveis.");
+    expect(n).toContain("deixar em repouso até 20 min");
+    expect(n).toContain("Após, aspirar 5 mL do medicamento e adicionar a uma bolsa de 250 mL de SF 0,9%. Volume final: 255 mL.");
+    expect(n).toContain("Concentração final: 1,177 mg/mL.");
+    expect(n).not.toMatch(/lavar a linha|Infundir|Estabilidade/);
   });
 });
 
@@ -185,7 +204,7 @@ describe("modelos de diluição dos demais medicamentos do guia (ainda não carr
     const r = calcular(med, { modo: "mg", doseMg: 800 });
     expect(r.volumeAspirarMl).toBe(20);
     expect(r.volumeFinalFaixaMl).toEqual({ min: 100, max: 200 });
-    expect(nota(med, { modo: "mg", doseMg: 800 })).toContain("800 U");
+    expect(nota(med, { modo: "mg", doseMg: 800 })).toContain("IMIGLUCERASE 800 U");
   });
 
   it("sem mL por frasco (imunoglobulina): calcula frascos sem inventar volume", () => {

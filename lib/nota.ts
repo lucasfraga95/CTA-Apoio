@@ -1,5 +1,5 @@
 import { unidadeDe } from "./calc";
-import { dataBR, num, plural } from "./format";
+import { num, plural } from "./format";
 import type { EntradaCalculo, Medicamento, ResultadoCalculo } from "./types";
 
 function descricaoDose(
@@ -11,13 +11,13 @@ function descricaoDose(
   const { mgPorFrasco } = med.apresentacao;
   switch (e.modo) {
     case "mgkg": {
-      const base = `${num(e.doseMgPorKg ?? 0)} ${un}/kg × ${num(e.pesoKg ?? 0)} kg = ${num(r.doseCalculadaMg)} ${un}`;
+      const base = `${num(e.doseMgPorKg ?? 0)} ${un}/kg x ${num(e.pesoKg ?? 0)} kg = ${num(r.doseCalculadaMg)} ${un}`;
       return r.arredondada
         ? `${base}; arredondada para ${num(r.doseMg)} ${un} (${r.frascosInteiros} ${plural(r.frascosInteiros, "frasco inteiro", "frascos inteiros")})`
         : base;
     }
     case "frascos":
-      return `${e.frascos} ${plural(e.frascos ?? 0, "frasco", "frascos")} × ${num(mgPorFrasco)} ${un}`;
+      return `${e.frascos} ${plural(e.frascos ?? 0, "frasco", "frascos")} x ${num(mgPorFrasco)} ${un}`;
     case "mg":
       return r.arredondada
         ? `dose prescrita ${num(r.doseCalculadaMg)} ${un}; arredondada para ${num(r.doseMg)} ${un}`
@@ -32,9 +32,13 @@ function faixaTexto(f: { min?: number; max?: number }): string {
   return "";
 }
 
+const cap = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);
+const ponto = (t: string) => (/[.!?]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
+
 /**
- * Gera a nota de preparo (texto simples) para colar na prescrição.
- * Retorna as linhas separadas; use .join("\n") para copiar.
+ * Gera a nota de preparo (texto curto) para colar na prescrição:
+ * cabeçalho com a dose + um parágrafo com frascos, reconstituição, diluição e concentração final.
+ * Infusão, estabilidade e observações ficam só no cadastro (não vão na nota).
  */
 export function gerarNota(
   med: Medicamento,
@@ -44,7 +48,7 @@ export function gerarNota(
   if (!r.ok) return [];
 
   const un = unidadeDe(med);
-  const { mgPorFrasco, mlPorFrasco } = med.apresentacao;
+  const { mgPorFrasco } = med.apresentacao;
   const d = med.diluicao;
   const linhas: string[] = [];
 
@@ -52,76 +56,67 @@ export function gerarNota(
     `${med.nome.toUpperCase()} ${num(r.doseMg)} ${un} IV (${descricaoDose(med, entrada, r)})`,
   );
 
+  const frases: string[] = [];
+
   const totalFrascos = `${r.frascosNecessarios} ${plural(r.frascosNecessarios, "frasco", "frascos")}`;
-  const sobra =
+  frases.push(
     r.sobraMg > 0
-      ? ` (o último frasco é parcial: usar ${num(mgPorFrasco - r.sobraMg)} ${un} e descartar ${num(r.sobraMg)} ${un}).`
-      : " (frascos inteiros, sem sobra).";
-  linhas.push(
-    mlPorFrasco !== undefined
-      ? `Apresentação: frasco de ${num(mgPorFrasco)} ${un}/${num(mlPorFrasco)} mL (${num(mgPorFrasco / mlPorFrasco, 3)} ${un}/mL). Total: ${totalFrascos}${sobra}`
-      : `Apresentação: frasco de ${num(mgPorFrasco)} ${un} (volume conforme o produto/fabricante). Total: ${totalFrascos}${sobra}`,
+      ? `Total: ${totalFrascos} (o último é parcial: usar ${num(mgPorFrasco - r.sobraMg)} ${un} e descartar ${num(r.sobraMg)} ${un}).`
+      : `Total: ${totalFrascos} (frascos inteiros, sem sobra).`,
   );
 
   if (med.reconstituicao) {
     const rec = med.reconstituicao;
-    linhas.push(
-      `Reconstituição: reconstituir cada frasco com ${num(rec.volumeMl)} mL de ${rec.diluente}` +
-        ` (total de ${num(r.volumeReconstituicaoTotalMl ?? 0)} mL para ${totalFrascos}).` +
-        (rec.instrucao ? ` ${rec.instrucao}` : ""),
-    );
+    frases.push(`Reconstituir cada frasco com ${num(rec.volumeMl)} mL de ${rec.diluente}.`);
+    if (rec.instrucao?.trim()) frases.push(ponto(rec.instrucao));
   }
 
   // ---- Preparo / diluição ----
   const aspirar =
     r.volumeAspirarMl !== undefined ? `aspirar ${num(r.volumeAspirarMl)} mL do medicamento` : "";
+  const inicio = (texto: string) => (med.reconstituicao ? `Após, ${texto}` : cap(texto));
 
   if (r.bolsaMl !== undefined && r.volumeFinalMl !== undefined) {
     if (d.modo === "completar") {
-      linhas.push(
-        `Preparo: ${aspirar ? aspirar + " e " : ""}completar com ${d.diluente} até o volume final de ${num(r.volumeFinalMl)} mL ` +
-          `(bolsa de ${num(r.bolsaMl)} mL${r.volumeAspirarMl !== undefined ? `, retirando antes ${num(r.volumeAspirarMl)} mL do soro` : ""}).`,
+      frases.push(
+        inicio(
+          `${aspirar ? aspirar + " e " : ""}completar com ${d.diluente} até o volume final de ${num(r.volumeFinalMl)} mL ` +
+            `(bolsa de ${num(r.bolsaMl)} mL${r.volumeAspirarMl !== undefined ? `, retirando antes ${num(r.volumeAspirarMl)} mL do soro` : ""}).`,
+        ),
       );
     } else {
-      linhas.push(
-        `Preparo: ${aspirar ? aspirar + " e " : ""}adicionar a uma bolsa de ${num(r.bolsaMl)} mL de ${d.diluente}. ` +
-          `Volume final: ${num(r.volumeFinalMl)} mL.`,
+      frases.push(
+        inicio(
+          `${aspirar ? aspirar + " e " : ""}adicionar a uma bolsa de ${num(r.bolsaMl)} mL de ${d.diluente}. ` +
+            `Volume final: ${num(r.volumeFinalMl)} mL.`,
+        ),
       );
     }
-    if (r.concentracaoFinalMgMl !== undefined) {
-      linhas.push(`Concentração final: ${num(r.concentracaoFinalMgMl, 3)} ${un}/mL.`);
-    }
   } else if (d.faixaConcentracao && r.volumeFinalFaixaMl) {
-    linhas.push(
-      `Preparo: ${aspirar ? aspirar + " e " : ""}diluir em ${d.diluente} para concentração final de ` +
-        `${num(d.faixaConcentracao.min, 3)} a ${num(d.faixaConcentracao.max, 3)} ${un}/mL ` +
-        `(volume final ${faixaTexto(r.volumeFinalFaixaMl)}).`,
+    frases.push(
+      inicio(
+        `${aspirar ? aspirar + " e " : ""}diluir em ${d.diluente} para concentração final de ` +
+          `${num(d.faixaConcentracao.min, 3)} a ${num(d.faixaConcentracao.max, 3)} ${un}/mL ` +
+          `(volume final ${faixaTexto(r.volumeFinalFaixaMl)}).`,
+      ),
     );
   } else if (d.faixaVolumeFinalMl && r.volumeFinalFaixaMl) {
-    linhas.push(
-      `Preparo: ${aspirar ? aspirar + " e " : ""}diluir em ${d.diluente} até volume final ${faixaTexto(r.volumeFinalFaixaMl)}.`,
+    frases.push(
+      inicio(
+        `${aspirar ? aspirar + " e " : ""}diluir em ${d.diluente} até volume final ${faixaTexto(r.volumeFinalFaixaMl)}.`,
+      ),
     );
   } else if (d.seguirFabricante) {
-    linhas.push("Preparo: diluir conforme a recomendação do fabricante.");
+    frases.push("Diluir conforme a recomendação do fabricante.");
   }
-  if (d.instrucaoExtra?.trim()) linhas.push(d.instrucaoExtra.trim());
+  if (d.instrucaoExtra?.trim()) frases.push(ponto(d.instrucaoExtra));
+  if (r.bolsaMl !== undefined && r.concentracaoFinalMgMl !== undefined) {
+    frases.push(`Concentração final: ${num(r.concentracaoFinalMgMl, 3)} ${un}/mL.`);
+  }
+  linhas.push(frases.join(" "));
 
-  if (med.infusaoTexto?.trim()) {
-    linhas.push(`Infusão: ${med.infusaoTexto.trim()}`);
-  } else if (med.tempoInfusaoMin) {
-    linhas.push(`Infundir em ${num(med.tempoInfusaoMin, 0)} minutos.`);
-  }
-  if (med.estabilidade?.trim()) linhas.push(`Estabilidade: ${med.estabilidade.trim()}`);
-  if (med.observacoes?.trim()) linhas.push(`Obs.: ${med.observacoes.trim()}`);
   if (r.alertas.length > 0) linhas.push(`ATENÇÃO: ${r.alertas.join(" ")}`);
-  if (!med.revisado) {
-    linhas.push("ATENÇÃO: cadastro deste medicamento ainda NÃO foi revisado.");
-  }
-
-  const data = dataBR(med.atualizadoEm);
-  linhas.push(
-    `Cálculo de apoio${data ? ` (base atualizada em ${data})` : ""}. Conferir com a farmácia antes do preparo.`,
-  );
+  if (!med.revisado) linhas.push("ATENÇÃO: cadastro ainda NÃO revisado.");
 
   return linhas;
 }
