@@ -84,38 +84,55 @@ export async function gravarMedicamentos(
   ].slice(0, 100);
 
   const params = new URLSearchParams();
-  if (process.env.VERCEL_TEAM_ID) params.set("teamId", process.env.VERCEL_TEAM_ID);
-  const url = `https://api.vercel.com/v1/edge-config/${id}/items${params.size ? `?${params}` : ""}`;
+  if (process.env.VERCEL_TEAM_ID) params.set("teamId", process.env.VERCEL_TEAM_ID.trim());
+  const query = params.size ? `?${params}` : "";
+  const base = `https://api.vercel.com/v1/edge-config/${id}/items${query}`;
+  const cabecalhos = {
+    Authorization: `Bearer ${token.trim()}`,
+    "Content-Type": "application/json",
+  };
 
-  const resp = await fetch(url, {
+  // A API exige "create" para chaves novas e "update" para as existentes
+  // (o "upsert" falha com "Item not found" quando a chave ainda não existe).
+  const consulta = await fetch(base, { headers: cabecalhos, cache: "no-store" });
+  if (!consulta.ok) return erroVercel("consultar", consulta);
+  const itens = (await consulta.json().catch(() => [])) as { key?: string }[];
+  const existentes = new Set(Array.isArray(itens) ? itens.map((i) => i.key) : []);
+  const operacao = (chave: string) => (existentes.has(chave) ? "update" : "create");
+
+  const resp = await fetch(base, {
     method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers: cabecalhos,
     body: JSON.stringify({
       items: [
-        { operation: "upsert", key: CHAVE_MEDS, value: lista },
-        { operation: "upsert", key: CHAVE_HIST, value: historico },
+        { operation: operacao(CHAVE_MEDS), key: CHAVE_MEDS, value: lista },
+        { operation: operacao(CHAVE_HIST), key: CHAVE_HIST, value: historico },
       ],
     }),
     cache: "no-store",
   });
 
-  if (!resp.ok) {
-    const detalhe = await resp.text().catch(() => "");
-    console.error("Falha ao gravar no Edge Config", resp.status, detalhe.slice(0, 300));
-    return {
-      ok: false,
-      erro:
-        resp.status === 401 || resp.status === 403
-          ? "A Vercel recusou o token (VERCEL_API_TOKEN). Confira o token e, se for o caso, o VERCEL_TEAM_ID."
-          : resp.status === 404
-            ? process.env.VERCEL_TEAM_ID
-              ? "A Vercel não encontrou o Edge Config. Confira se o VERCEL_TEAM_ID é o do Team onde ele foi criado e se o token tem escopo desse Team."
-              : "A Vercel não encontrou o Edge Config. Se o projeto está em um Team, defina a variável VERCEL_TEAM_ID e faça um novo deploy."
-            : `Falha ao gravar na Vercel (HTTP ${resp.status}).`,
-    };
-  }
+  if (!resp.ok) return erroVercel("gravar", resp);
   return { ok: true };
+}
+
+async function erroVercel(
+  etapa: string,
+  resp: Response,
+): Promise<{ ok: false; erro: string }> {
+  const bruto = await resp.text().catch(() => "");
+  console.error(`Falha ao ${etapa} no Edge Config`, resp.status, bruto.slice(0, 300));
+  let detalhe = "";
+  try {
+    detalhe = JSON.parse(bruto)?.error?.message ?? "";
+  } catch {
+    /* sem detalhe */
+  }
+  const base =
+    resp.status === 401 || resp.status === 403
+      ? "A Vercel recusou o token (VERCEL_API_TOKEN). Confira o token e, se for o caso, o VERCEL_TEAM_ID."
+      : resp.status === 404
+        ? "A Vercel não encontrou o Edge Config ou o item. Confira o VERCEL_TEAM_ID e o escopo do token."
+        : `Falha ao ${etapa} na Vercel (HTTP ${resp.status}).`;
+  return { ok: false, erro: detalhe ? `${base} Detalhe: ${detalhe}` : base };
 }
