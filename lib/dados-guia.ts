@@ -33,15 +33,17 @@ export const MEDICAMENTOS_GUIA: Medicamento[] = [
     dosesUsuais: [
       { rotulo: "Artrite reumatoide (infusão inicial)", mgPorKg: 3 },
       { rotulo: "Espondilite, A. psoriásica, psoríase, Crohn, RCU", mgPorKg: 5 },
+      { rotulo: "Ajuste de dose (máximo da bula)", mgPorKg: 10 },
     ],
+    doseMaxMgKg: 10,
     infusaoTexto:
-      "Mínimo de 2 h na infusão inicial. Na artrite reumatoide, se as 3 primeiras infusões foram toleradas em 2 h, as seguintes podem durar no mínimo 1 h. Nas demais indicações (5 mg/kg): mínimo de 2 h.",
+      "Mínimo de 2 h na infusão inicial (todas as indicações). Na artrite reumatoide, se as 3 primeiras infusões foram toleradas em 2 h, as seguintes podem durar no mínimo 1 h. Demais indicações: mínimo de 2 h.",
     estabilidade:
       "Sem conservantes: iniciar a infusão em até 3 h após a reconstituição e a diluição. Em condições assépticas, pode ser usada em até 24 h entre 2 e 8 °C. Não guardar a sobra da solução.",
     observacoes:
-      "Usar equipo com filtro em linha estéril, apirogênico e de baixa ligação a proteínas (poro de 1,2 µm ou menor; o guia do serviço cita 0,2 µm) e bomba de infusão. Não infundir junto com outros medicamentos no mesmo equipo. Não administrar em infecção ativa clinicamente importante, insuficiência cardíaca ou alergia a proteínas de camundongo. Contém sacarose (atenção em diabéticos). Solução reconstituída: de incolor a amarelada e opalescente, pode ter partículas translúcidas finas; não usar com partículas opacas ou mudança de cor. Observar por pelo menos 1 h após a infusão. Descartar a sobra.",
+      "Usar equipo com filtro em linha estéril, apirogênico e de baixa ligação a proteínas (poro de 1,2 µm ou menor; o guia do serviço cita 0,2 µm) e bomba de infusão. Infundir lentamente, sobretudo se já houve reação à infusão. Não infundir junto com outros medicamentos no mesmo equipo. Dose máxima de 10 mg/kg (ajuste na artrite reumatoide, Crohn e colite/retocolite ulcerativa). Insuficiência cardíaca: usar com extrema cautela; a dose não deve exceder 5 mg/kg. Não administrar em infecção ativa clinicamente importante ou alergia a proteínas de camundongo. Adultos: todas as indicações; 6 a 17 anos: apenas Crohn e colite/retocolite ulcerativa. Contém sacarose (atenção em diabéticos) e 1,9 mg de sódio por frasco. Solução reconstituída: de incolor a amarelada e opalescente, pode ter partículas translúcidas finas; não usar com partículas opacas ou mudança de cor. Observar por pelo menos 1 h após a infusão. Descartar a sobra.",
     pendencias:
-      "Conferido com a bula do paciente (Remicade, aprovada em 06/10/2023): reconstituição, diluição em 250 mL de SF 0,9%, filtro e estabilidade batem. Essa bula NÃO traz doses em mg/kg nem dose máxima: as doses (3 e 5 mg/kg) vêm do guia do serviço e não há dose máxima cadastrada; para isso é preciso a bula do profissional. A retirada de SF da bolsa é descrita na bula como opção ('pode ser realizado') e é a forma usada aqui (volume final de 250 mL): confirmar a prática do serviço.",
+      "Conferido com as bulas do paciente e do profissional (Remicade): preparo, diluição em 250 mL de SF 0,9%, filtro e estabilidade batem; as doses (3 mg/kg na artrite reumatoide e 5 mg/kg nas demais indicações) e o máximo de 10 mg/kg (ajuste) vêm da bula do profissional, que não traz dose máxima absoluta em mg. Em insuficiência cardíaca a bula limita a 5 mg/kg, o que o site não controla (depende do paciente). A retirada de SF da bolsa é descrita como opção ('pode ser realizado') e é a forma usada aqui (volume final de 250 mL): confirmar a prática do serviço.",
     arredondamento: SEM_ARRED,
     revisado: false,
     atualizadoEm: DATA,

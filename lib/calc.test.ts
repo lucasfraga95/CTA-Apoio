@@ -205,10 +205,46 @@ describe("regras gerais do cálculo", () => {
     expect(calcular(med, { modo: "mgkg", pesoKg: 60, doseMgPorKg: 8 }).ok).toBe(false);
   });
 
-  it("alerta quando a dose fica fora dos limites mg/kg cadastrados", () => {
+  it("dose máxima em mg/kg é teto rígido: recusa acima dele", () => {
     const med: Medicamento = { ...base, doseMaxMgKg: 8, doseMaxMg: undefined };
     const r = calcular(med, { modo: "mgkg", pesoKg: 60, doseMgPorKg: 10 });
-    expect(r.alertas.join(" ")).toMatch(/acima do máximo/);
+    expect(r.ok).toBe(false);
+    expect(r.erro).toMatch(/máximo de 8 mg\/kg/);
+    expect(calcular(med, { modo: "mgkg", pesoKg: 60, doseMgPorKg: 8 }).ok).toBe(true);
+  });
+
+  it("dose mínima em mg/kg só gera alerta", () => {
+    const med: Medicamento = { ...base, doseMinMgKg: 4, doseMaxMg: undefined };
+    const r = calcular(med, { modo: "mgkg", pesoKg: 60, doseMgPorKg: 2 });
+    expect(r.ok).toBe(true);
+    expect(r.alertas.join(" ")).toMatch(/abaixo do mínimo/);
+  });
+});
+
+describe("infliximabe: máximo de 10 mg/kg (bula do profissional)", () => {
+  it("o cadastro traz as doses 3, 5 e 10 mg/kg e o máximo de 10 mg/kg", () => {
+    expect(infli.dosesUsuais.map((d) => d.mgPorKg)).toEqual([3, 5, 10]);
+    expect(infli.doseMaxMgKg).toBe(10);
+    expect(infli.doseMaxMg).toBeUndefined();
+  });
+
+  it("10 mg/kg passa; acima de 10 mg/kg é recusado", () => {
+    const ok = calcular(infli, { modo: "mgkg", pesoKg: 70, doseMgPorKg: 10 });
+    expect(ok.ok).toBe(true);
+    expect(ok.doseMg).toBe(700);
+    const ruim = calcular(infli, { modo: "mgkg", pesoKg: 70, doseMgPorKg: 11 });
+    expect(ruim.ok).toBe(false);
+    expect(ruim.erro).toMatch(/passa do máximo de 10 mg\/kg/);
+  });
+
+  it("dose em mg com peso informado também respeita o máximo em mg/kg", () => {
+    expect(calcular(infli, { modo: "mg", doseMg: 800, pesoKg: 70 }).ok).toBe(false); // 11,4 mg/kg
+    expect(calcular(infli, { modo: "mg", doseMg: 700, pesoKg: 70 }).ok).toBe(true);
+    expect(calcular(infli, { modo: "frascos", frascos: 8, pesoKg: 70 }).ok).toBe(false);
+  });
+
+  it("sem peso não dá para conferir mg/kg: não bloqueia", () => {
+    expect(calcular(infli, { modo: "mg", doseMg: 800 }).ok).toBe(true);
   });
 });
 

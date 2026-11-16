@@ -628,11 +628,11 @@ export default function AdminPanel({ inicial, origem, historico, podeGravar }: P
           <h3>Limites de segurança (opcionais)</h3>
           <div className="grade tres">
             <div className="campo">
-              <label htmlFor="f-dmin">Dose mínima (mg/kg)</label>
+              <label htmlFor="f-dmin">Dose mínima ({form.unidade}/kg) — só alerta</label>
               <input id="f-dmin" inputMode="decimal" value={form.doseMinKg} onChange={(e) => set("doseMinKg", e.target.value)} />
             </div>
             <div className="campo">
-              <label htmlFor="f-dmax">Dose máxima (mg/kg)</label>
+              <label htmlFor="f-dmax">Dose máxima ({form.unidade}/kg) — teto rígido</label>
               <input id="f-dmax" inputMode="decimal" value={form.doseMaxKg} onChange={(e) => set("doseMaxKg", e.target.value)} />
             </div>
             <div className="campo">

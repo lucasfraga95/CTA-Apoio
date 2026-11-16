@@ -117,6 +117,16 @@ export function calcular(
   const d = med.diluicao;
   const pesoInformado = positivo(entrada.pesoKg) ? entrada.pesoKg : undefined;
 
+  // Dose máxima em mg/kg: teto rígido sempre que o peso é conhecido.
+  if (positivo(med.doseMaxMgKg) && pesoInformado !== undefined) {
+    const porKg = dose / pesoInformado;
+    if (porKg > med.doseMaxMgKg + EPS) {
+      return falha(
+        `A dose de ${num(dose)} ${un} equivale a ${num(porKg)} ${un}/kg e passa do máximo de ${num(med.doseMaxMgKg)} ${un}/kg. Reduza a dose.`,
+      );
+    }
+  }
+
   // ---- Volume da bolsa (fixo ou por peso) ----
   let bolsaMl: number | undefined;
   if (d.volumeBolsaPorPeso && d.volumeBolsaPorPeso.length > 0) {
@@ -166,11 +176,6 @@ export function calcular(
     alertas.push(`Peso incomum (${num(pesoInformado)} kg). Confira se está em kg.`);
   }
   if (mgPorKgEquivalente !== undefined) {
-    if (positivo(med.doseMaxMgKg) && mgPorKgEquivalente > med.doseMaxMgKg + EPS) {
-      alertas.push(
-        `Dose de ${num(mgPorKgEquivalente)} ${un}/kg acima do máximo cadastrado (${num(med.doseMaxMgKg)} ${un}/kg).`,
-      );
-    }
     if (positivo(med.doseMinMgKg) && mgPorKgEquivalente < med.doseMinMgKg - EPS) {
       alertas.push(
         `Dose de ${num(mgPorKgEquivalente)} ${un}/kg abaixo do mínimo cadastrado (${num(med.doseMinMgKg)} ${un}/kg).`,
